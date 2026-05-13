@@ -436,7 +436,7 @@ export default function App() {
             <T>Log Sleep</T>
             <div className="row">
               <div style={{flex:1}}><L>Date</L><input type="date" className="inp" value={fSleep.date} onChange={e=>setFSleep(p=>({...p,date:e.target.value}))}/></div>
-              <div style={{flex:1}}><L>Duration (h:mm)</L><input type="text" className="inp" placeholder="7:30" value={fSleep.time} onChange={e=>setFSleep(p=>({...p,time:e.target.value.replace(/[^0-9:]/g,"")})}/><div className="hint">8:05 = 8 hrs 5 min</div></div>
+              <div style={{flex:1}}><L>Duration (h:mm)</L><input type="text" className="inp" placeholder="7:30" value={fSleep.time} onChange={e=>setFSleep(p=>({...p,time:e.target.value.replace(/[^0-9:]/g,"")}))}/><div className="hint">8:05 = 8 hrs 5 min</div></div>
               <div style={{flex:1}}><L>Quality</L><select className="sel" style={{width:"100%"}} value={fSleep.quality} onChange={e=>setFSleep(p=>({...p,quality:+e.target.value}))}>{[1,2,3,4,5].map(v=><option key={v} value={v}>{v} — {["Terrible","Poor","Okay","Good","Perfect"][v-1]}</option>)}</select></div>
             </div>
             <button className="btn bta" style={{marginTop:12}} onClick={logSleep}>Log</button>
@@ -590,6 +590,7 @@ export default function App() {
                     <Chip color={gc(g.gnum)} bg={gc(g.gnum)+"22"}>{g.grade}</Chip>
                     <button className="btx" style={{padding:"1px 5px"}} onClick={()=>setGrades(p=>p.filter(x=>x.id!==g.id))}>✕</button>
                   </div>
+                </div>
                 ))}
               </div>
             );
@@ -600,7 +601,7 @@ export default function App() {
             <T>Log Study Session</T>
             <div className="row">
               <div style={{flex:1}}><L>Subject</L><select className="sel" style={{width:"100%"}} value={fStudy.subId} onChange={e=>setFStudy(p=>({...p,subId:e.target.value}))}><option value="">Select…</option>{subs.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-              <div><L>Duration (h:mm)</L><input type="text" className="inp" style={{width:80}} placeholder="1:30" value={fStudy.dur} onChange={e=>setFStudy(p=>({...p,dur:e.target.value.replace(/[^0-9:]/g,"")})}/></div>
+              <div><L>Duration (h:mm)</L><input type="text" className="inp" style={{width:80}} placeholder="1:30" value={fStudy.dur} onChange={e=>setFStudy(p=>({...p,dur:e.target.value.replace(/[^0-9:]/g,"")}))}/></div>
               <div><L>Date</L><input type="date" className="inp" value={fStudy.date} onChange={e=>setFStudy(p=>({...p,date:e.target.value}))}/></div>
             </div>
             <L>Note</L><input className="inp" placeholder="Topic covered…" value={fStudy.note} onChange={e=>setFStudy(p=>({...p,note:e.target.value}))}/>
