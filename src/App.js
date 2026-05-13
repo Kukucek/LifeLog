@@ -590,7 +590,6 @@ export default function App() {
                     <Chip color={gc(g.gnum)} bg={gc(g.gnum)+"22"}>{g.grade}</Chip>
                     <button className="btx" style={{padding:"1px 5px"}} onClick={()=>setGrades(p=>p.filter(x=>x.id!==g.id))}>✕</button>
                   </div>
-                </div>
                 ))}
               </div>
             );
