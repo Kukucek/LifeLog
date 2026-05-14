@@ -14,11 +14,11 @@ const dimDays = (ym) => { const [y, m] = ym.split("-").map(Number); return new D
 const CZ_GRADES = ["1", "1-", "2", "2-", "3", "3-", "4", "4-", "5"];
 const gradeNum = (g) => { const b = parseInt(g); if (isNaN(b)) return 3; if (g.endsWith("-")) return b + 0.33; return b; };
 
-/* ── palette ── */
-const C = { bg: "#0c0b12", card: "#13121a", card2: "#0f0e16", border: "#1e1c2e", text: "#cccae0", muted: "#5a5870", accent: "#5b8dd9", good: "#6bbf6b", bad: "#c96b6b", blue2: "#3a6ab5", teal: "#5bb8b8" };
-const COLS = ["#5b8dd9","#6bbf6b","#c96b6b","#8b6bd9","#5bb8b8","#d9915b","#b85bb8","#5bd9a8"];
+/* ── palette (HIGH CONTRAST) ── */
+const C = { bg: "#08070b", card: "#15141e", card2: "#1a1925", border: "#323048", text: "#f0eff5", muted: "#a0a5b5", accent: "#6e9fee", good: "#7cd37c", bad: "#ef6b6b", blue2: "#4a7bc7", teal: "#6ccfcf" };
+const COLS = ["#6e9fee","#7cd37c","#ef6b6b","#9b7ce3","#6ccfcf","#e3a36e","#c76bc7","#6ce3b5"];
 const pc = (i) => COLS[i % COLS.length];
-const gc = (n) => n <= 1.5 ? C.good : n <= 2.5 ? C.accent : n <= 3.5 ? "#7bafd9" : n <= 4 ? "#c9a06b" : C.bad;
+const gc = (n) => n <= 1.5 ? C.good : n <= 2.5 ? C.accent : n <= 3.5 ? "#8bbbf0" : n <= 4 ? "#d3ad7c" : C.bad;
 
 /* ── habit scheduling ── */
 const scheduled = (h, ds) => {
@@ -45,6 +45,25 @@ const Chip = ({children,color,bg}) => (<span style={{display:"inline-block",padd
 const T = ({children}) => <div style={{fontFamily:"'Lora',serif",fontSize:".93rem",fontWeight:500,color:C.text,marginBottom:12}}>{children}</div>;
 const L = ({children}) => <span style={{fontSize:".62rem",color:C.muted,letterSpacing:".09em",textTransform:"uppercase",display:"block",margin:"10px 0 4px",fontFamily:"'IBM Plex Mono',monospace"}}>{children}</span>;
 const Hr = () => <div style={{height:1,background:C.border,margin:"14px 0"}}/>;
+
+/* ── manual order component ── */
+const MoveBtns = ({ setter, id }) => {
+  const move = (dir) => {
+    setter(p => {
+      const idx = p.findIndex(x => x.id === id);
+      if (idx < 0 || idx + dir < 0 || idx + dir >= p.length) return p;
+      const n = [...p];
+      [n[idx], n[idx+dir]] = [n[idx+dir], n[idx]];
+      return n;
+    });
+  };
+  return (
+    <div style={{display:"flex",flexDirection:"column",marginRight:6,gap:2}}>
+      <button style={{background:"none",border:"none",color:C.muted,fontSize:".6rem",cursor:"pointer",padding:"2px 4px"}} onClick={e=>{e.stopPropagation();move(-1)}}>▲</button>
+      <button style={{background:"none",border:"none",color:C.muted,fontSize:".6rem",cursor:"pointer",padding:"2px 4px"}} onClick={e=>{e.stopPropagation();move(1)}}>▼</button>
+    </div>
+  );
+};
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
@@ -80,7 +99,7 @@ const css = `
   .spinner{animation:spin 1s linear infinite;display:inline-block;}
 `;
 
-/* ── Main App Component (Only visible when logged in) ── */
+/* ── Main App Component ── */
 function MainApp({ session }) {
   const uid = session.user.id;
   const [tab, setTab] = useState("Habits");
@@ -303,6 +322,7 @@ function MainApp({ session }) {
             const str=getStreak(h.id);
             return(
               <div key={h.id} className={`hrow${done?" done":""}`} style={{opacity:sched?1:.4}} onClick={()=>sched&&toggleHabit(h.id)}>
+                <MoveBtns setter={setHabits} id={h.id} />
                 <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${done?h.color:C.border}`,background:done?h.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".58rem",color:"#fff",flexShrink:0,transition:"all .2s"}}>{done?"✓":""}</div>
                 <div style={{fontSize:"1rem"}}>{h.icon}</div>
                 <div style={{flex:1}}>
@@ -365,7 +385,10 @@ function MainApp({ session }) {
           {fgoals.map(g=>{const pct=Math.min((g.saved/g.target)*100,100);return(
             <div key={g.id} className="card" style={{padding:12}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{fontSize:".84rem"}}>{g.name}</div>
+                <div style={{display:"flex",alignItems:"center"}}>
+                  <MoveBtns setter={setFgoals} id={g.id} />
+                  <div style={{fontSize:".84rem"}}>{g.name}</div>
+                </div>
                 <div style={{display:"flex",gap:7,alignItems:"center"}}><span style={{fontSize:".74rem",color:C.accent}}>{g.saved.toFixed(0)} / {g.target.toFixed(0)} Kč</span><button className="btx" onClick={()=>setFgoals(p=>p.filter(x=>x.id!==g.id))}>✕</button></div>
               </div>
               <div style={{marginTop:8}}><Bar pct={pct} color={pct>=100?C.good:C.accent}/></div>
@@ -384,6 +407,7 @@ function MainApp({ session }) {
           {recur.length===0&&<div style={{fontSize:".73rem",color:C.muted,marginBottom:10}}>No recurring payments.</div>}
           {recur.map(r=>(
             <div key={r.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}>
+              <MoveBtns setter={setRecur} id={r.id} />
               <Chip color={r.type==="income"?C.good:C.bad} bg={(r.type==="income"?C.good:C.bad)+"18"}>{r.type}</Chip>
               <div style={{flex:1}}><div style={{fontSize:".8rem"}}>{r.name}</div><div style={{fontSize:".62rem",color:C.muted}}>every month, day {r.day}</div></div>
               <span style={{color:r.type==="income"?C.good:C.bad,fontSize:".8rem"}}>{r.type==="income"?"+":"-"}{r.amount.toFixed(0)} Kč</span>
@@ -429,7 +453,10 @@ function MainApp({ session }) {
             if(g.type==="completable")return(
               <div key={g.id} className="card">
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div><div style={{fontSize:".85rem",display:"flex",alignItems:"center",gap:7}}>{g.done&&<span style={{color:C.good}}>✓</span>}{g.title}</div><div style={{marginTop:4}}><Chip>Completable</Chip></div></div>
+                  <div style={{display:"flex",alignItems:"center"}}>
+                    <MoveBtns setter={setGoals} id={g.id} />
+                    <div><div style={{fontSize:".85rem",display:"flex",alignItems:"center",gap:7}}>{g.done&&<span style={{color:C.good}}>✓</span>}{g.title}</div><div style={{marginTop:4}}><Chip>Completable</Chip></div></div>
+                  </div>
                   <div style={{display:"flex",gap:7}}>
                     <button className="btn" style={{background:g.done?C.good+"22":C.border,color:g.done?C.good:C.muted,fontSize:".68rem",padding:"5px 10px"}} onClick={()=>setGoals(p=>p.map(x=>x.id===g.id?{...x,done:!x.done}:x))}>{g.done?"✓ Done":"Mark done"}</button>
                     <button className="btx" onClick={()=>setGoals(p=>p.filter(x=>x.id!==g.id))}>✕</button>
@@ -441,7 +468,10 @@ function MainApp({ session }) {
             return(
               <div key={g.id} className="card">
                 <div style={{display:"flex",justifyContent:"space-between"}}>
-                  <div><div style={{fontSize:".85rem"}}>{g.title}</div><div style={{fontSize:".67rem",color:C.muted,marginTop:2}}>{g.current} / {g.target} {g.unit}</div></div>
+                  <div style={{display:"flex",alignItems:"center"}}>
+                    <MoveBtns setter={setGoals} id={g.id} />
+                    <div><div style={{fontSize:".85rem"}}>{g.title}</div><div style={{fontSize:".67rem",color:C.muted,marginTop:2}}>{g.current} / {g.target} {g.unit}</div></div>
+                  </div>
                   <button className="btx" onClick={()=>setGoals(p=>p.filter(x=>x.id!==g.id))}>✕</button>
                 </div>
                 <div style={{marginTop:8}}><Bar pct={pct} color={pct>=100?C.good:C.accent}/></div>
@@ -467,6 +497,7 @@ function MainApp({ session }) {
               <div key={sub.id} className="sc">
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
                   <div style={{display:"flex",alignItems:"center",gap:7}}>
+                    <MoveBtns setter={setSubs} id={sub.id} />
                     <div style={{width:8,height:8,borderRadius:"50%",background:sub.color}}/>
                     <span style={{fontFamily:"'Lora',serif",fontSize:".9rem"}}>{sub.name}</span>
                   </div>
@@ -547,7 +578,7 @@ function MainApp({ session }) {
             <button className="btn bta" onClick={()=>setMTask(true)}>+ Add</button>
           </div>
           {["high","medium","low"].map(prio=>{
-            const ts=tasks.filter(t=>t.priority===prio&&!t.done).sort((a,b)=>(a.due||"9999").localeCompare(b.due||"9999"));
+            const ts=tasks.filter(t=>t.priority===prio&&!t.done);
             if(!ts.length)return null;
             const [pc2,pl]=TPRIO[prio];
             return(
@@ -557,6 +588,7 @@ function MainApp({ session }) {
                   const od=t.due&&t.due<today();
                   return(
                     <div key={t.id} className="trow">
+                      <MoveBtns setter={setTasks} id={t.id} />
                       <button style={{width:15,height:15,borderRadius:"50%",border:`1.5px solid ${od?C.bad:C.border}`,background:"transparent",cursor:"pointer",flexShrink:0,marginTop:3}} onClick={()=>setTasks(p=>p.map(x=>x.id===t.id?{...x,done:true}:x))}/>
                       <div style={{flex:1}}>
                         <div style={{fontSize:".82rem",color:od?C.bad:C.text}}>{t.title}</div>
