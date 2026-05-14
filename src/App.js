@@ -31,7 +31,8 @@ const scheduled = (h, ds) => {
   return true;
 };
 
-const TABS = ["Habits","Sleep","Finance","Goals","School","Mood","Tasks","Business","Report"];
+/* ── REORDERED TABS ── */
+const TABS = ["Habits","Tasks","Goals","Sleep","Mood","School","Finance","Business","Report"];
 const MOODS = [{ v:1,e:"😔",l:"Rough"},{v:2,e:"😕",l:"Meh"},{v:3,e:"😐",l:"Okay"},{v:4,e:"🙂",l:"Good"},{v:5,e:"😄",l:"Great"}];
 const WDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const TCATS = ["school","finance","work","personal","health","other"];
@@ -65,6 +66,7 @@ const MoveBtns = ({ setter, id }) => {
   );
 };
 
+/* ── FIXED CSS HEIGHTS & ALIGNMENT ── */
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -79,8 +81,10 @@ const css = `
   .btg{background:${C.card};color:${C.muted};border:1px solid ${C.border};}.btg:hover{color:${C.text};border-color:${C.accent}55;}
   .btx{background:transparent;color:${C.bad};border:1px solid ${C.bad}33;padding:3px 8px;font-size:.65rem;border-radius:4px;cursor:pointer;font-family:'IBM Plex Mono',monospace;}.btx:hover{background:${C.bad}18;}
   .btsm{padding:5px 10px;font-size:.67rem;}
-  .inp{background:${C.card2};border:1px solid ${C.border};border-radius:6px;color:${C.text};font-family:'IBM Plex Mono',monospace;font-size:.78rem;padding:7px 10px;outline:none;width:100%;transition:border .2s;}.inp:focus{border-color:${C.accent}66;}
-  .sel{background:${C.card2};border:1px solid ${C.border};border-radius:6px;color:${C.text};font-family:'IBM Plex Mono',monospace;font-size:.78rem;padding:7px 10px;outline:none;}
+  .inp{background:${C.card2};border:1px solid ${C.border};border-radius:6px;color:${C.text};font-family:'IBM Plex Mono',monospace;font-size:.78rem;padding:7px 10px;outline:none;width:100%;transition:border .2s; height:34px; box-sizing:border-box; -webkit-appearance:none; appearance:none;}
+  .inp:focus{border-color:${C.accent}66;}
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; cursor: pointer; }
+  .sel{background:${C.card2};border:1px solid ${C.border};border-radius:6px;color:${C.text};font-family:'IBM Plex Mono',monospace;font-size:.78rem;padding:6px 10px;outline:none; height:34px; box-sizing:border-box;}
   .row{display:flex;gap:9px;flex-wrap:wrap;}
   .ov{position:fixed;inset:0;background:#00000090;display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px);}
   .modal{background:${C.card};border:1px solid ${C.border};border-radius:12px;padding:22px;width:360px;max-width:96vw;max-height:90vh;overflow-y:auto;}
