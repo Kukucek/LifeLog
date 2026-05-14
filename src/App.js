@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { supabase, getUserId } from "./supabase";
+import { supabase } from "./supabase";
 
 /* ── date utils ── */
 const today = () => new Date().toISOString().slice(0, 10);
@@ -80,13 +80,13 @@ const css = `
   .spinner{animation:spin 1s linear infinite;display:inline-block;}
 `;
 
-export default function App() {
-  const uid = getUserId();
+/* ── Main App Component (Only visible when logged in) ── */
+function MainApp({ session }) {
+  const uid = session.user.id;
   const [tab, setTab] = useState("Habits");
   const [loading, setLoading] = useState(true);
-  const [syncStatus, setSyncStatus] = useState("ok"); // ok | syncing | error
+  const [syncStatus, setSyncStatus] = useState("ok"); 
 
-  /* ── all data state ── */
   const [habits, setHabits] = useState([]);
   const [hlog, setHlog] = useState({});
   const [sleep, setSleep] = useState([]);
@@ -103,15 +103,11 @@ export default function App() {
   const [clients, setClients] = useState([]);
   const [biz, setBiz] = useState([]);
 
-  /* ── load all data from Supabase on mount ── */
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
       try {
-        const { data } = await supabase
-          .from("lifelog_data")
-          .select("key, value")
-          .eq("user_id", uid);
+        const { data } = await supabase.from("lifelog_data").select("key, value").eq("user_id", uid);
         if (data) {
           const map = {};
           data.forEach(r => { map[r.key] = r.value; });
@@ -137,11 +133,9 @@ export default function App() {
     loadAll();
   }, [uid]);
 
-  /* ── sync helper ── */
   const syncRef = useRef({});
   const sync = useCallback(async (key, value) => {
     setSyncStatus("syncing");
-    // debounce per key
     clearTimeout(syncRef.current[key]);
     syncRef.current[key] = setTimeout(async () => {
       try {
@@ -154,24 +148,22 @@ export default function App() {
     }, 800);
   }, [uid]);
 
-  /* ── sync on every change ── */
-  useEffect(() => { if (!loading) sync("habits", habits); }, [habits, loading]);
-  useEffect(() => { if (!loading) sync("hlog", hlog); }, [hlog, loading]);
-  useEffect(() => { if (!loading) sync("sleep", sleep); }, [sleep, loading]);
-  useEffect(() => { if (!loading) sync("fin", fin); }, [fin, loading]);
-  useEffect(() => { if (!loading) sync("recur", recur); }, [recur, loading]);
-  useEffect(() => { if (!loading) sync("fgoals", fgoals); }, [fgoals, loading]);
-  useEffect(() => { if (!loading) sync("goals", goals); }, [goals, loading]);
-  useEffect(() => { if (!loading) sync("subs", subs); }, [subs, loading]);
-  useEffect(() => { if (!loading) sync("study", study); }, [study, loading]);
-  useEffect(() => { if (!loading) sync("grades", grades); }, [grades, loading]);
-  useEffect(() => { if (!loading) sync("mood", mood); }, [mood, loading]);
-  useEffect(() => { if (!loading) sync("tasks", tasks); }, [tasks, loading]);
-  useEffect(() => { if (!loading) sync("orders", orders); }, [orders, loading]);
-  useEffect(() => { if (!loading) sync("clients", clients); }, [clients, loading]);
-  useEffect(() => { if (!loading) sync("biz", biz); }, [biz, loading]);
+  useEffect(() => { if (!loading) sync("habits", habits); }, [habits, loading, sync]);
+  useEffect(() => { if (!loading) sync("hlog", hlog); }, [hlog, loading, sync]);
+  useEffect(() => { if (!loading) sync("sleep", sleep); }, [sleep, loading, sync]);
+  useEffect(() => { if (!loading) sync("fin", fin); }, [fin, loading, sync]);
+  useEffect(() => { if (!loading) sync("recur", recur); }, [recur, loading, sync]);
+  useEffect(() => { if (!loading) sync("fgoals", fgoals); }, [fgoals, loading, sync]);
+  useEffect(() => { if (!loading) sync("goals", goals); }, [goals, loading, sync]);
+  useEffect(() => { if (!loading) sync("subs", subs); }, [subs, loading, sync]);
+  useEffect(() => { if (!loading) sync("study", study); }, [study, loading, sync]);
+  useEffect(() => { if (!loading) sync("grades", grades); }, [grades, loading, sync]);
+  useEffect(() => { if (!loading) sync("mood", mood); }, [mood, loading, sync]);
+  useEffect(() => { if (!loading) sync("tasks", tasks); }, [tasks, loading, sync]);
+  useEffect(() => { if (!loading) sync("orders", orders); }, [orders, loading, sync]);
+  useEffect(() => { if (!loading) sync("clients", clients); }, [clients, loading, sync]);
+  useEffect(() => { if (!loading) sync("biz", biz); }, [biz, loading, sync]);
 
-  /* modals */
   const [mHabit, setMHabit] = useState(false);
   const [mGoal, setMGoal] = useState(false);
   const [mSub, setMSub] = useState(false);
@@ -183,7 +175,6 @@ export default function App() {
   const [mCount, setMCount] = useState(null);
   const [countV, setCountV] = useState("");
 
-  /* forms */
   const [fHabit, setFHabit] = useState({name:"",icon:"✅",type:"check",unit:"",target:"",freq:{type:"daily",x:2,days:[],day:1}});
   const [fSleep, setFSleep] = useState({date:today(),time:"07:30",quality:4});
   const [fFin, setFFin] = useState({date:today(),type:"expense",category:"",amount:"",note:""});
@@ -200,133 +191,42 @@ export default function App() {
   const [fBiz, setFBiz] = useState({date:today(),type:"revenue",category:"",amount:"",note:""});
   const [repMonth, setRepMonth] = useState(thisMonth());
 
-  /* recurring injected */
-  const recurThisMonth = useMemo(() =>
-    recur.map(r=>({...r,id:`rec_${r.id}_${thisMonth()}`,date:`${thisMonth()}-${String(r.day).padStart(2,"0")}`,isRec:true})),
-  [recur]);
+  const recurThisMonth = useMemo(() => recur.map(r=>({...r,id:`rec_${r.id}_${thisMonth()}`,date:`${thisMonth()}-${String(r.day).padStart(2,"0")}`,isRec:true})), [recur]);
   const allFin = useMemo(()=>[...fin,...recurThisMonth].sort((a,b)=>b.date.localeCompare(a.date)),[fin,recurThisMonth]);
 
-  /* habit helpers */
   const hval = (hid,ds) => hlog[`${ds}_${hid}`]||0;
   const isDone = (h,ds) => { const v=hval(h.id,ds); return h.type==="check"?v>0:(h.target>0?v>=h.target:v>0); };
-  const getStreak = (hid) => {
-    let s=0; const d=new Date(); const h=habits.find(x=>x.id===hid); if(!h) return 0;
-    for(let i=0;i<365;i++){const ds=d.toISOString().slice(0,10);if(!scheduled(h,ds)){d.setDate(d.getDate()-1);continue;}if(hlog[`${ds}_${hid}`]){s++;d.setDate(d.getDate()-1);}else break;}
-    return s;
-  };
+  const getStreak = (hid) => { let s=0; const d=new Date(); const h=habits.find(x=>x.id===hid); if(!h) return 0; for(let i=0;i<365;i++){const ds=d.toISOString().slice(0,10);if(!scheduled(h,ds)){d.setDate(d.getDate()-1);continue;}if(hlog[`${ds}_${hid}`]){s++;d.setDate(d.getDate()-1);}else break;} return s; };
   const last7 = Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toISOString().slice(0,10);});
 
-  const toggleHabit = (hid) => {
-    const h=habits.find(x=>x.id===hid);
-    if(h.type==="count"){setMCount(hid);setCountV("");return;}
-    const k=`${today()}_${hid}`;
-    setHlog(p=>({...p,[k]:p[k]?0:1}));
-  };
+  const toggleHabit = (hid) => { const h=habits.find(x=>x.id===hid); if(h.type==="count"){setMCount(hid);setCountV("");return;} const k=`${today()}_${hid}`; setHlog(p=>({...p,[k]:p[k]?0:1})); };
   const logCount = () => { setHlog(p=>({...p,[`${today()}_${mCount}`]:parseFloat(countV)||0})); setMCount(null); };
-  const addHabit = () => {
-    if(!fHabit.name.trim())return;
-    setHabits(p=>[...p,{...fHabit,id:Date.now(),color:pc(p.length),target:parseFloat(fHabit.target)||0}]);
-    setFHabit({name:"",icon:"✅",type:"check",unit:"",target:"",freq:{type:"daily",x:2,days:[],day:1}});
-    setMHabit(false);
-  };
+  const addHabit = () => { if(!fHabit.name.trim())return; setHabits(p=>[...p,{...fHabit,id:Date.now(),color:pc(p.length),target:parseFloat(fHabit.target)||0}]); setFHabit({name:"",icon:"✅",type:"check",unit:"",target:"",freq:{type:"daily",x:2,days:[],day:1}}); setMHabit(false); };
 
-  /* sleep */
   const sleepAvg = sleep.slice(0,7).length?Math.round(sleep.slice(0,7).reduce((s,x)=>s+x.minutes,0)/Math.min(sleep.length,7)):0;
-  const logSleep = () => {
-    if(!fSleep.time)return;
-    setSleep(p=>[...p.filter(s=>s.date!==fSleep.date),{...fSleep,minutes:toMins(fSleep.time)}].sort((a,b)=>b.date.localeCompare(a.date)));
-  };
+  const logSleep = () => { if(!fSleep.time)return; setSleep(p=>[...p.filter(s=>s.date!==fSleep.date),{...fSleep,minutes:toMins(fSleep.time)}].sort((a,b)=>b.date.localeCompare(a.date))); };
 
-  /* finance */
-  const mFin=allFin.filter(f=>f.date.startsWith(thisMonth()));
-  const mInc=mFin.filter(f=>f.type==="income").reduce((s,f)=>s+f.amount,0);
-  const mExp=mFin.filter(f=>f.type==="expense").reduce((s,f)=>s+f.amount,0);
-  const mBal=mInc-mExp;
-  const addFin = () => {
-    if(!fFin.amount||!fFin.category)return;
-    setFin(p=>[{...fFin,id:Date.now(),amount:parseFloat(fFin.amount)},...p]);
-    setFFin(p=>({...p,category:"",amount:"",note:""}));
-  };
-  const addRecur = () => {
-    if(!fRecur.name||!fRecur.amount)return;
-    setRecur(p=>[...p,{...fRecur,id:Date.now(),amount:parseFloat(fRecur.amount)}]);
-    setFRecur({name:"",type:"expense",amount:"",day:1,note:""}); setMRecur(false);
-  };
-  const addFgoal = () => {
-    if(!fFgoal.name||!fFgoal.target)return;
-    setFgoals(p=>[...p,{...fFgoal,id:Date.now(),target:parseFloat(fFgoal.target),saved:parseFloat(fFgoal.saved)||0}]);
-    setFFgoal({name:"",target:"",saved:""}); setMFgoal(false);
-  };
+  const mFin=allFin.filter(f=>f.date.startsWith(thisMonth())); const mInc=mFin.filter(f=>f.type==="income").reduce((s,f)=>s+f.amount,0); const mExp=mFin.filter(f=>f.type==="expense").reduce((s,f)=>s+f.amount,0); const mBal=mInc-mExp;
+  const addFin = () => { if(!fFin.amount||!fFin.category)return; setFin(p=>[{...fFin,id:Date.now(),amount:parseFloat(fFin.amount)},...p]); setFFin(p=>({...p,category:"",amount:"",note:""})); };
+  const addRecur = () => { if(!fRecur.name||!fRecur.amount)return; setRecur(p=>[...p,{...fRecur,id:Date.now(),amount:parseFloat(fRecur.amount)}]); setFRecur({name:"",type:"expense",amount:"",day:1,note:""}); setMRecur(false); };
+  const addFgoal = () => { if(!fFgoal.name||!fFgoal.target)return; setFgoals(p=>[...p,{...fFgoal,id:Date.now(),target:parseFloat(fFgoal.target),saved:parseFloat(fFgoal.saved)||0}]); setFFgoal({name:"",target:"",saved:""}); setMFgoal(false); };
 
-  /* goals */
-  const addGoal = () => {
-    if(!fGoal.title)return;
-    setGoals(p=>[...p,{...fGoal,id:Date.now(),target:parseFloat(fGoal.target)||1,current:parseFloat(fGoal.current)||0,done:false}]);
-    setFGoal({title:"",type:"numeric",target:"",unit:"",current:""}); setMGoal(false);
-  };
+  const addGoal = () => { if(!fGoal.title)return; setGoals(p=>[...p,{...fGoal,id:Date.now(),target:parseFloat(fGoal.target)||1,current:parseFloat(fGoal.current)||0,done:false}]); setFGoal({title:"",type:"numeric",target:"",unit:"",current:""}); setMGoal(false); };
+  const addSub = () => { if(!fSub.name.trim())return; setSubs(p=>[...p,{...fSub,id:Date.now()}]); setFSub({name:"",color:pc(subs.length)}); setMSub(false); };
+  const logStudy = () => { if(!fStudy.subId||!fStudy.dur)return; setStudy(p=>[...p,{...fStudy,id:Date.now(),minutes:toMins(fStudy.dur)}]); setFStudy(p=>({...p,dur:"01:00",note:""})); };
+  const logGrade = () => { if(!fGrade.subId||!fGrade.label||!fGrade.grade)return; setGrades(p=>[...p,{...fGrade,id:Date.now(),gnum:gradeNum(fGrade.grade),weight:parseInt(fGrade.weight)||5}]); setFGrade(p=>({...p,label:"",grade:"1",weight:5})); };
+  const subStats = (sid) => { const ls=study.filter(s=>s.subId==sid); const gs=grades.filter(g=>g.subId==sid); const totalMins=ls.reduce((s,l)=>s+l.minutes,0); const wavg=gs.length?gs.reduce((s,g)=>s+g.gnum*g.weight,0)/gs.reduce((s,g)=>s+g.weight,0):null; return {totalMins,wavg}; };
 
-  /* school */
-  const addSub = () => {
-    if(!fSub.name.trim())return;
-    setSubs(p=>[...p,{...fSub,id:Date.now()}]);
-    setFSub({name:"",color:pc(subs.length)}); setMSub(false);
-  };
-  const logStudy = () => {
-    if(!fStudy.subId||!fStudy.dur)return;
-    setStudy(p=>[...p,{...fStudy,id:Date.now(),minutes:toMins(fStudy.dur)}]);
-    setFStudy(p=>({...p,dur:"01:00",note:""}));
-  };
-  const logGrade = () => {
-    if(!fGrade.subId||!fGrade.label||!fGrade.grade)return;
-    setGrades(p=>[...p,{...fGrade,id:Date.now(),gnum:gradeNum(fGrade.grade),weight:parseInt(fGrade.weight)||5}]);
-    setFGrade(p=>({...p,label:"",grade:"1",weight:5}));
-  };
-  const subStats = (sid) => {
-    const ls=study.filter(s=>s.subId==sid);
-    const gs=grades.filter(g=>g.subId==sid);
-    const totalMins=ls.reduce((s,l)=>s+l.minutes,0);
-    const wavg=gs.length?gs.reduce((s,g)=>s+g.gnum*g.weight,0)/gs.reduce((s,g)=>s+g.weight,0):null;
-    return {totalMins,wavg};
-  };
-
-  /* mood */
   const avgMood=mood.slice(0,7).length?(mood.slice(0,7).reduce((s,m)=>s+m.value,0)/Math.min(mood.length,7)).toFixed(1):"—";
-  const logMood = () => {
-    setMood(p=>[...p.filter(m=>m.date!==fMood.date),{...fMood}].sort((a,b)=>b.date.localeCompare(a.date)));
-    setFMood(p=>({...p,note:""}));
-  };
-
-  /* tasks */
+  const logMood = () => { setMood(p=>[...p.filter(m=>m.date!==fMood.date),{...fMood}].sort((a,b)=>b.date.localeCompare(a.date))); setFMood(p=>({...p,note:""})); };
   const overdue=tasks.filter(t=>!t.done&&t.due&&t.due<today()).length;
-  const addTask = () => {
-    if(!fTask.title)return;
-    setTasks(p=>[...p,{...fTask,id:Date.now(),done:false}]);
-    setFTask({title:"",due:"",category:"school",priority:"medium",note:""}); setMTask(false);
-  };
+  const addTask = () => { if(!fTask.title)return; setTasks(p=>[...p,{...fTask,id:Date.now(),done:false}]); setFTask({title:"",due:"",category:"school",priority:"medium",note:""}); setMTask(false); };
 
-  /* business */
-  const mBiz=biz.filter(e=>e.date.startsWith(thisMonth()));
-  const mRev=mBiz.filter(e=>e.type==="revenue").reduce((s,e)=>s+e.amount,0);
-  const mBizExp=mBiz.filter(e=>e.type==="expense").reduce((s,e)=>s+e.amount,0);
-  const mProfit=mRev-mBizExp;
-  const pendingVal=orders.filter(o=>o.status==="pending").reduce((s,o)=>s+o.amount,0);
-  const addOrder = () => {
-    if(!fOrder.desc||!fOrder.amount)return;
-    setOrders(p=>[{...fOrder,id:Date.now(),amount:parseFloat(fOrder.amount)},...p]);
-    setFOrder({clientId:"",desc:"",amount:"",date:today(),status:"pending"}); setMOrder(false);
-  };
-  const addClient = () => {
-    if(!fClient.name)return;
-    setClients(p=>[...p,{...fClient,id:Date.now()}]);
-    setFClient({name:"",contact:"",note:""}); setMClient(false);
-  };
-  const addBiz = () => {
-    if(!fBiz.amount||!fBiz.category)return;
-    setBiz(p=>[{...fBiz,id:Date.now(),amount:parseFloat(fBiz.amount)},...p]);
-    setFBiz(p=>({...p,category:"",amount:"",note:""}));
-  };
+  const mBiz=biz.filter(e=>e.date.startsWith(thisMonth())); const mRev=mBiz.filter(e=>e.type==="revenue").reduce((s,e)=>s+e.amount,0); const mBizExp=mBiz.filter(e=>e.type==="expense").reduce((s,e)=>s+e.amount,0); const mProfit=mRev-mBizExp; const pendingVal=orders.filter(o=>o.status==="pending").reduce((s,o)=>s+o.amount,0);
+  const addOrder = () => { if(!fOrder.desc||!fOrder.amount)return; setOrders(p=>[{...fOrder,id:Date.now(),amount:parseFloat(fOrder.amount)},...p]); setFOrder({clientId:"",desc:"",amount:"",date:today(),status:"pending"}); setMOrder(false); };
+  const addClient = () => { if(!fClient.name)return; setClients(p=>[...p,{...fClient,id:Date.now()}]); setFClient({name:"",contact:"",note:""}); setMClient(false); };
+  const addBiz = () => { if(!fBiz.amount||!fBiz.category)return; setBiz(p=>[{...fBiz,id:Date.now(),amount:parseFloat(fBiz.amount)},...p]); setFBiz(p=>({...p,category:"",amount:"",note:""})); };
 
-  /* report */
   const rep = useMemo(()=>{
     const rf=[...fin,...recur.map(r=>({...r,date:`${repMonth}-${String(r.day).padStart(2,"0")}`}))].filter(f=>f.date.startsWith(repMonth));
     const rInc=rf.filter(f=>f.type==="income").reduce((s,f)=>s+f.amount,0);
@@ -337,8 +237,7 @@ export default function App() {
     const avgS=rs.length?hm(Math.round(rs.reduce((s,x)=>s+x.minutes,0)/rs.length)):"—";
     const dc=dimDays(repMonth);
     const hStats=habits.map(h=>{
-      let days=0;
-      for(let i=1;i<=dc;i++){const ds=`${repMonth}-${String(i).padStart(2,"0")}`;if(scheduled(h,ds)&&hlog[`${ds}_${h.id}`])days++;}
+      let days=0; for(let i=1;i<=dc;i++){const ds=`${repMonth}-${String(i).padStart(2,"0")}`;if(scheduled(h,ds)&&hlog[`${ds}_${h.id}`])days++;}
       const sch=Array.from({length:dc},(_,i)=>`${repMonth}-${String(i+1).padStart(2,"0")}`).filter(ds=>scheduled(h,ds)).length;
       return {...h,days,sch,pct:sch?Math.round((days/sch)*100):0};
     });
@@ -350,11 +249,7 @@ export default function App() {
   },[repMonth,fin,recur,mood,sleep,habits,hlog,goals,biz]);
 
   const freqLbl = (freq) => {
-    if(!freq||freq.type==="daily")return"Daily";
-    if(freq.type==="every_x_days")return`Every ${freq.x||2} days`;
-    if(freq.type==="weekly")return`Weekly (${(freq.days||[]).map(i=>WDAYS[i]).join(", ")})`;
-    if(freq.type==="monthly")return`Monthly (day ${freq.day||1})`;
-    return"";
+    if(!freq||freq.type==="daily")return"Daily"; if(freq.type==="every_x_days")return`Every ${freq.x||2} days`; if(freq.type==="weekly")return`Weekly (${(freq.days||[]).map(i=>WDAYS[i]).join(", ")})`; if(freq.type==="monthly")return`Monthly (day ${freq.day||1})`; return"";
   };
 
   if (loading) return (
@@ -367,8 +262,6 @@ export default function App() {
   return (
     <div style={{fontFamily:"'IBM Plex Mono',monospace",background:C.bg,minHeight:"100vh",color:C.text}}>
       <style>{css}</style>
-
-      {/* Header */}
       <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"13px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
         <div>
           <div style={{fontFamily:"'Lora',serif",fontSize:"1.3rem",fontWeight:600,color:C.accent}}>LifeLog</div>
@@ -384,8 +277,9 @@ export default function App() {
           <div className={`sync${syncStatus==="ok"?" ok":syncStatus==="error"?" err":""}`}>
             {syncStatus==="syncing"&&<span className="spinner">↻</span>}
             {syncStatus==="ok"&&"✓ synced"}
-            {syncStatus==="error"&&"⚠ sync error"}
+            {syncStatus==="error"&&"⚠ error"}
           </div>
+          <button className="btn btg btsm" style={{marginLeft: 8}} onClick={() => supabase.auth.signOut()}>Logout</button>
         </div>
       </div>
 
@@ -914,4 +808,80 @@ export default function App() {
       </div></div>}
     </div>
   );
+}
+
+/* ── App Wrapper (Handles the Login Screen) ── */
+export default function App() {
+  const [session, setSession] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [authMode, setAuthMode] = useState('login'); 
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+  }, []);
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (authMode === 'signup') {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        alert('Account created! You can now log in.');
+        setAuthMode('login');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+    } catch (error) {
+      alert(error.error_description || error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,color:C.muted,fontFamily:"'IBM Plex Mono',monospace"}}>
+        <style>{css}</style>
+        <div style={{fontSize:"1.4rem",fontFamily:"'Lora',serif",color:C.accent}}>LifeLog</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'IBM Plex Mono',monospace",color:C.text,padding:20}}>
+        <style>{css}</style>
+        <div className="card" style={{width: 320, padding: 24, margin: 0}}>
+          <div style={{fontFamily:"'Lora',serif",fontSize:"1.6rem",fontWeight:600,color:C.accent,textAlign:"center",marginBottom:20}}>LifeLog</div>
+          <form onSubmit={handleAuth}>
+            <L>Email</L>
+            <input className="inp" type="email" value={email} onChange={e=>setEmail(e.target.value)} required style={{marginBottom: 12}} />
+            <L>Password</L>
+            <input className="inp" type="password" value={password} onChange={e=>setPassword(e.target.value)} required style={{marginBottom: 20}} />
+            <button className="btn bta" type="submit" style={{width:"100%", marginBottom: 12, padding: "10px 0"}} disabled={loading}>
+              {authMode === 'login' ? 'Sign In' : 'Create Account'}
+            </button>
+          </form>
+          <div style={{textAlign:"center", fontSize:".7rem", color:C.muted, marginTop: 8}}>
+            {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
+            <span style={{color:C.accent, cursor:"pointer", fontWeight:500}} onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}>
+              {authMode === 'login' ? 'Sign up' : 'Log in'}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <MainApp session={session} />;
 }
