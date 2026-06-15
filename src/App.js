@@ -47,6 +47,13 @@ const T = ({children}) => <div style={{fontFamily:"'Lora',serif",fontSize:".93re
 const L = ({children}) => <span style={{fontSize:".62rem",color:C.muted,letterSpacing:".09em",textTransform:"uppercase",display:"block",margin:"10px 0 4px",fontFamily:"'IBM Plex Mono',monospace"}}>{children}</span>;
 const Hr = () => <div style={{height:1,background:C.border,margin:"14px 0"}}/>;
 
+/* ── Sleep Score Calc ── */
+const getSleepScore = (mins, qual) => {
+  const timeScore = Math.min(mins / 480, 1) * 50; 
+  const qualScore = (qual / 5) * 50;
+  return Math.round(timeScore + qualScore);
+};
+
 /* ── manual order component ── */
 const MoveBtns = ({ setter, id }) => {
   const move = (dir) => {
@@ -129,6 +136,7 @@ function MainApp({ session }) {
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState([]);
   const [biz, setBiz] = useState([]);
+  const [investments, setInvestments] = useState([]);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -156,6 +164,7 @@ function MainApp({ session }) {
           if (map.orders) setOrders(map.orders);
           if (map.clients) setClients(map.clients);
           if (map.biz) setBiz(map.biz);
+          if (map.investments) setInvestments(map.investments);
         }
       } catch (e) { console.error(e); }
       setLoading(false);
@@ -196,12 +205,14 @@ function MainApp({ session }) {
   useEffect(() => { if (!loading) sync("orders", orders); }, [orders, loading, sync]);
   useEffect(() => { if (!loading) sync("clients", clients); }, [clients, loading, sync]);
   useEffect(() => { if (!loading) sync("biz", biz); }, [biz, loading, sync]);
+  useEffect(() => { if (!loading) sync("investments", investments); }, [investments, loading, sync]);
 
   const [mHabit, setMHabit] = useState(false);
   const [mGoal, setMGoal] = useState(false);
   const [mSub, setMSub] = useState(false);
   const [mFgoal, setMFgoal] = useState(false);
   const [mRecur, setMRecur] = useState(false);
+  const [mInvest, setMInvest] = useState(false);
   const [mTask, setMTask] = useState(false);
   const [mOrder, setMOrder] = useState(false);
   const [mClient, setMClient] = useState(false);
@@ -212,6 +223,7 @@ function MainApp({ session }) {
   const [fFin, setFFin] = useState({date:today(),type:"expense",category:"",amount:"",note:""});
   const [fFgoal, setFFgoal] = useState({name:"",target:"",saved:""});
   const [fRecur, setFRecur] = useState({name:"",type:"expense",amount:"",day:1,note:""});
+  const [fInvest, setFInvest] = useState({name:"", type:"crypto", amount:""});
   const [fGoal, setFGoal] = useState({title:"",type:"numeric",target:"",unit:"",current:""});
   const [fSub, setFSub] = useState({name:"",color:"#5b8dd9"});
   const [fStudy, setFStudy] = useState({subId:"",date:today(),dur:"01:00",note:""});
@@ -240,6 +252,7 @@ function MainApp({ session }) {
   const addFin = () => { if(!fFin.amount||!fFin.category)return; setFin(p=>[{...fFin,id:Date.now(),amount:parseFloat(fFin.amount)},...p]); setFFin(p=>({...p,category:"",amount:"",note:""})); };
   const addRecur = () => { if(!fRecur.name||!fRecur.amount)return; setRecur(p=>[...p,{...fRecur,id:Date.now(),amount:parseFloat(fRecur.amount)}]); setFRecur({name:"",type:"expense",amount:"",day:1,note:""}); setMRecur(false); };
   const addFgoal = () => { if(!fFgoal.name||!fFgoal.target)return; setFgoals(p=>[...p,{...fFgoal,id:Date.now(),target:parseFloat(fFgoal.target),saved:parseFloat(fFgoal.saved)||0}]); setFFgoal({name:"",target:"",saved:""}); setMFgoal(false); };
+  const addInvest = () => { if(!fInvest.name||!fInvest.amount)return; setInvestments(p=>[...p,{...fInvest,id:Date.now(),amount:parseFloat(fInvest.amount)}]); setFInvest({name:"",type:"crypto",amount:""}); setMInvest(false); };
 
   const addGoal = () => { if(!fGoal.title)return; setGoals(p=>[...p,{...fGoal,id:Date.now(),target:parseFloat(fGoal.target)||1,current:parseFloat(fGoal.current)||0,done:false}]); setFGoal({title:"",type:"numeric",target:"",unit:"",current:""}); setMGoal(false); };
   const addSub = () => { if(!fSub.name.trim())return; setSubs(p=>[...p,{...fSub,id:Date.now()}]); setFSub({name:"",color:pc(subs.length)}); setMSub(false); };
@@ -273,11 +286,7 @@ function MainApp({ session }) {
       return [...ex, {...fJournal}].sort((a,b)=>b.date.localeCompare(a.date));
     });
   };
-  // Automatically load today's journal on mount if available
-  useEffect(() => {
-    const ex = journal.find(j => j.date === today());
-    if (ex) setFJournal(ex);
-  }, [journal]);
+  useEffect(() => { const ex = journal.find(j => j.date === today()); if (ex) setFJournal(ex); }, [journal]);
 
   const overdue=tasks.filter(t=>!t.done&&t.due&&t.due<today()).length;
   const addTask = () => { if(!fTask.title)return; setTasks(p=>[...p,{...fTask,id:Date.now(),done:false}]); setFTask({title:"",due:"",category:"school",priority:"medium",note:""}); setMTask(false); };
@@ -329,6 +338,29 @@ function MainApp({ session }) {
   return (
     <div style={{fontFamily:"'IBM Plex Mono',monospace",background:C.bg,minHeight:"100vh",color:C.text}}>
       <style>{css}</style>
+      
+      {/* ── Auto-Complete Datalists ── */}
+      <datalist id="inc-cats">
+        <option value="Salary"/>
+        <option value="Refereeing Matches"/>
+        <option value="Manual Labor"/>
+        <option value="Allowance"/>
+        <option value="Gifts"/>
+        <option value="Bonuses"/>
+      </datalist>
+      <datalist id="exp-cats">
+        <option value="Rent"/>
+        <option value="Electricity"/>
+        <option value="Water / Utilities"/>
+        <option value="Subscriptions"/>
+        <option value="Car & Fuel"/>
+        <option value="Groceries"/>
+        <option value="Sports Gear"/>
+        <option value="Electronics"/>
+        <option value="Dining Out"/>
+        <option value="Household"/>
+      </datalist>
+
       <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"13px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
         <div>
           <div style={{fontFamily:"'Lora',serif",fontSize:"1.3rem",fontWeight:600,color:C.accent}}>LifeLog</div>
@@ -527,7 +559,12 @@ function MainApp({ session }) {
                     <div key={d} style={{padding:"10px 0", borderBottom:`1px solid ${C.border}`}}>
                        <div style={{fontSize:".7rem",color:C.accent,marginBottom:4,fontFamily:"'Lora',serif"}}>{fmt(d)}</div>
                        <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                          {s && <div style={{display:"flex",gap:8,alignItems:"center",fontSize:".75rem"}}><Chip bg={C.blue2+"22"} color={C.blue2}>Sleep</Chip> <span style={{flex:1}}>{hm(s.minutes)}</span> <span style={{color:C.muted}}>★{s.quality}</span> <button className="btx" style={{padding:"0 4px"}} onClick={()=>setSleep(p=>p.filter(x=>x.date!==d))}>✕</button></div>}
+                          {s && <div style={{display:"flex",gap:8,alignItems:"center",fontSize:".75rem"}}>
+                              <Chip bg={C.blue2+"22"} color={C.blue2}>Sleep</Chip> 
+                              <span>{hm(s.minutes)}</span> <span style={{color:C.muted}}>★{s.quality}</span> 
+                              <span style={{flex:1}}><Chip color={getSleepScore(s.minutes, s.quality) >= 80 ? C.good : getSleepScore(s.minutes, s.quality) >= 60 ? C.accent : C.bad}>Score: {getSleepScore(s.minutes, s.quality)}/100</Chip></span>
+                              <button className="btx" style={{padding:"0 4px"}} onClick={()=>setSleep(p=>p.filter(x=>x.date!==d))}>✕</button>
+                            </div>}
                           {mo && <div style={{display:"flex",gap:8,alignItems:"center",fontSize:".75rem"}}><Chip bg={C.accent+"22"} color={C.accent}>Mood</Chip> <span>{MOODS.find(x=>x.v===mo.value)?.e}</span> <span style={{flex:1,color:C.muted,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{mo.note}</span> <button className="btx" style={{padding:"0 4px"}} onClick={()=>setMood(p=>p.filter(x=>x.date!==d))}>✕</button></div>}
                           {me && <div style={{display:"flex",gap:8,alignItems:"center",fontSize:".75rem"}}><Chip bg={C.teal+"22"} color={C.teal}>Mental</Chip> <span>{MOODS.find(x=>x.v===me.value)?.e}</span> <span style={{flex:1,color:C.muted,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{me.note}</span> <button className="btx" style={{padding:"0 4px"}} onClick={()=>setMental(p=>p.filter(x=>x.date!==d))}>✕</button></div>}
                           {ph && <div style={{display:"flex",gap:8,alignItems:"center",fontSize:".75rem"}}><Chip bg={C.good+"22"} color={C.good}>Physical</Chip> <span>{MOODS.find(x=>x.v===ph.value)?.e}</span> <span style={{flex:1,color:C.muted,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ph.note}</span> <button className="btx" style={{padding:"0 4px"}} onClick={()=>setPhysical(p=>p.filter(x=>x.date!==d))}>✕</button></div>}
@@ -642,6 +679,24 @@ function MainApp({ session }) {
           <div className="row" style={{marginBottom:12}}>
             {[{l:"Income",v:`${mInc.toFixed(0)} Kč`,c:C.good},{l:"Expenses",v:`${mExp.toFixed(0)} Kč`,c:C.bad},{l:"Balance",v:`${mBal>=0?"+":""}${Math.abs(mBal).toFixed(0)} Kč`,c:mBal>=0?C.good:C.bad}].map(s=><Stat key={s.l} label={s.l} value={s.v} color={s.c}/>)}
           </div>
+          
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
+            <div style={{fontSize:".68rem",color:C.muted,textTransform:"uppercase",letterSpacing:".07em"}}>Investments</div>
+            <button className="btn btg btsm" onClick={()=>setMInvest(true)}>+ Invest</button>
+          </div>
+          {investments.length > 0 && <div style={{fontSize:".9rem",color:C.accent,marginBottom:10,fontFamily:"'Lora',serif"}}>{investments.reduce((s,i)=>s+i.amount,0).toFixed(0)} Kč Total Portfolio</div>}
+          {investments.length===0&&<div style={{fontSize:".73rem",color:C.muted,marginBottom:10}}>No active investments.</div>}
+          {investments.map(i=>(
+            <div key={i.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}>
+              <MoveBtns setter={setInvestments} id={i.id} />
+              <Chip color={C.teal} bg={C.teal+"18"}>{i.type}</Chip>
+              <div style={{flex:1,fontSize:".8rem"}}>{i.name}</div>
+              <span style={{color:C.text,fontSize:".8rem"}}>{i.amount.toFixed(0)} Kč</span>
+              <button className="btx" onClick={()=>setInvestments(p=>p.filter(x=>x.id!==i.id))}>✕</button>
+            </div>
+          ))}
+          <Hr/>
+
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
             <div style={{fontSize:".68rem",color:C.muted,textTransform:"uppercase",letterSpacing:".07em"}}>Saving Goals</div>
             <button className="btn btg btsm" onClick={()=>setMFgoal(true)}>+ Goal</button>
@@ -664,6 +719,7 @@ function MainApp({ session }) {
             </div>
           );})}
           <Hr/>
+
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
             <div style={{fontSize:".68rem",color:C.muted,textTransform:"uppercase",letterSpacing:".07em"}}>Recurring Payments</div>
             <button className="btn btg btsm" onClick={()=>setMRecur(true)}>+ Add</button>
@@ -679,11 +735,12 @@ function MainApp({ session }) {
             </div>
           ))}
           <Hr/>
+
           <div className="card">
             <T>Add Entry</T>
             <div className="row">
               <div><L>Type</L><select className="sel" value={fFin.type} onChange={e=>setFFin(p=>({...p,type:e.target.value}))}><option value="income">Income</option><option value="expense">Expense</option></select></div>
-              <div style={{flex:1}}><L>Category</L><input className="inp" placeholder={fFin.type==="income"?"Salary…":"Rent, Food…"} value={fFin.category} onChange={e=>setFFin(p=>({...p,category:e.target.value}))}/></div>
+              <div style={{flex:1}}><L>Category</L><input className="inp" list={fFin.type==="income"?"inc-cats":"exp-cats"} placeholder="Start typing or pick..." value={fFin.category} onChange={e=>setFFin(p=>({...p,category:e.target.value}))}/></div>
               <div style={{width:88}}><L>Amount Kč</L><input type="number" className="inp" placeholder="0" value={fFin.amount} onChange={e=>setFFin(p=>({...p,amount:e.target.value}))}/></div>
             </div>
             <div className="row" style={{marginTop:7}}>
@@ -692,6 +749,7 @@ function MainApp({ session }) {
             </div>
             <button className="btn bta" style={{marginTop:12}} onClick={addFin}>Add</button>
           </div>
+          
           <div className="card" style={{padding:"8px 12px"}}>
             {allFin.length===0&&<div style={{color:C.muted,textAlign:"center"}}>No entries.</div>}
             {allFin.slice(0,30).map(f=>(
@@ -870,6 +928,16 @@ function MainApp({ session }) {
         {(()=>{const h=habits.find(x=>x.id===mCount);return(<><div style={{fontFamily:"'Lora',serif",fontSize:"1rem",marginBottom:12}}>Log {h?.name}</div><L>Today's {h?.unit||"amount"}</L><input type="number" className="inp" placeholder="0" value={countV} onChange={e=>setCountV(e.target.value)} autoFocus onKeyDown={e=>e.key==="Enter"&&logCount()}/><div className="row" style={{marginTop:15}}><button className="btn bta" style={{flex:1}} onClick={logCount}>Log</button><button className="btn btg" style={{flex:1}} onClick={()=>setMCount(null)}>Cancel</button></div></>);})()}
       </div></div>}
 
+      {mInvest&&<div className="ov" onClick={()=>setMInvest(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
+        <div style={{fontFamily:"'Lora',serif",fontSize:"1rem",marginBottom:12}}>New Investment</div>
+        <L>Asset Name</L><input className="inp" placeholder="BTC, S&P 500..." value={fInvest.name} onChange={e=>setFInvest(p=>({...p,name:e.target.value}))} autoFocus/>
+        <div className="row">
+           <div style={{flex:1}}><L>Type</L><select className="sel" style={{width:"100%"}} value={fInvest.type} onChange={e=>setFInvest(p=>({...p,type:e.target.value}))}><option value="crypto">Crypto</option><option value="shares">Shares</option><option value="savings">Savings Account</option><option value="other">Other</option></select></div>
+           <div style={{width:100}}><L>Amount Kč</L><input type="number" className="inp" placeholder="0" value={fInvest.amount} onChange={e=>setFInvest(p=>({...p,amount:e.target.value}))}/></div>
+        </div>
+        <div className="row" style={{marginTop:15}}><button className="btn bta" style={{flex:1}} onClick={addInvest}>Add</button><button className="btn btg" style={{flex:1}} onClick={()=>setMInvest(false)}>Cancel</button></div>
+      </div></div>}
+
       {mGoal&&<div className="ov" onClick={()=>setMGoal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
         <div style={{fontFamily:"'Lora',serif",fontSize:"1rem",marginBottom:12}}>New Goal</div>
         <L>Title</L><input className="inp" placeholder="e.g. Run 100km" value={fGoal.title} onChange={e=>setFGoal(p=>({...p,title:e.target.value}))} autoFocus/>
@@ -899,7 +967,7 @@ function MainApp({ session }) {
         <div style={{fontFamily:"'Lora',serif",fontSize:"1rem",marginBottom:12}}>Recurring Payment</div>
         <L>Name</L><input className="inp" placeholder="Rent, Spotify…" value={fRecur.name} onChange={e=>setFRecur(p=>({...p,name:e.target.value}))} autoFocus/>
         <div className="row"><div><L>Type</L><select className="sel" value={fRecur.type} onChange={e=>setFRecur(p=>({...p,type:e.target.value}))}><option value="expense">Expense</option><option value="income">Income</option></select></div><div style={{flex:1}}><L>Amount Kč</L><input type="number" className="inp" placeholder="0" value={fRecur.amount} onChange={e=>setFRecur(p=>({...p,amount:e.target.value}))}/></div><div><L>Day of month</L><input type="number" className="inp" style={{width:58}} min={1} max={28} value={fRecur.day} onChange={e=>setFRecur(p=>({...p,day:parseInt(e.target.value)||1}))}/></div></div>
-        <L>Note</L><input className="inp" placeholder="Optional" value={fRecur.note} onChange={e=>setFRecur(p=>({...p,note:e.target.value}))}/>
+        <L>Category</L><input className="inp" list={fRecur.type==="income"?"inc-cats":"exp-cats"} placeholder="Start typing or pick..." value={fRecur.note} onChange={e=>setFRecur(p=>({...p,note:e.target.value}))}/>
         <div className="row" style={{marginTop:15}}><button className="btn bta" style={{flex:1}} onClick={addRecur}>Add</button><button className="btn btg" style={{flex:1}} onClick={()=>setMRecur(false)}>Cancel</button></div>
       </div></div>}
 
