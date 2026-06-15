@@ -31,11 +31,11 @@ const scheduled = (h, ds) => {
   return true;
 };
 
-/* ── REORDERED TABS ── */
-const TABS = ["Habits","Tasks","Goals","Sleep","Mood","School","Finance","Business","Report"];
+/* ── NEW TABS & CATEGORIES ── */
+const TABS = ["Habits","Tasks","Goals","Health","Journal","School","Finance","Business","Report"];
 const MOODS = [{ v:1,e:"😔",l:"Rough"},{v:2,e:"😕",l:"Meh"},{v:3,e:"😐",l:"Okay"},{v:4,e:"🙂",l:"Good"},{v:5,e:"😄",l:"Great"}];
 const WDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-const TCATS = ["school","finance","work","personal","health","other"];
+const TCATS = ["school","finance","work","household","personal","health","other"];
 const TPRIO = { low:[C.muted,"Low"], medium:[C.accent,"Medium"], high:[C.bad,"High"] };
 const OSTATUS = { pending:[C.accent,"Pending"], in_progress:[C.teal,"In progress"], done:[C.good,"Done"], cancelled:[C.bad,"Cancelled"] };
 
@@ -82,6 +82,7 @@ const css = `
   .btx{background:transparent;color:${C.bad};border:1px solid ${C.bad}33;padding:3px 8px;font-size:.65rem;border-radius:4px;cursor:pointer;font-family:'IBM Plex Mono',monospace;}.btx:hover{background:${C.bad}18;}
   .btsm{padding:5px 10px;font-size:.67rem;}
   .inp{background:${C.card2};border:1px solid ${C.border};border-radius:6px;color:${C.text};font-family:'IBM Plex Mono',monospace;font-size:.78rem;padding:7px 10px;outline:none;width:100%;transition:border .2s; height:34px; box-sizing:border-box; -webkit-appearance:none; appearance:none;}
+  textarea.inp { height: auto; resize: vertical; line-height: 1.4; }
   .inp:focus{border-color:${C.accent}66;}
   input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; cursor: pointer; }
   .sel{background:${C.card2};border:1px solid ${C.border};border-radius:6px;color:${C.text};font-family:'IBM Plex Mono',monospace;font-size:.78rem;padding:6px 10px;outline:none; height:34px; box-sizing:border-box;}
@@ -121,6 +122,9 @@ function MainApp({ session }) {
   const [study, setStudy] = useState([]);
   const [grades, setGrades] = useState([]);
   const [mood, setMood] = useState([]);
+  const [mental, setMental] = useState([]);
+  const [physical, setPhysical] = useState([]);
+  const [journal, setJournal] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState([]);
@@ -145,6 +149,9 @@ function MainApp({ session }) {
           if (map.study) setStudy(map.study);
           if (map.grades) setGrades(map.grades);
           if (map.mood) setMood(map.mood);
+          if (map.mental) setMental(map.mental);
+          if (map.physical) setPhysical(map.physical);
+          if (map.journal) setJournal(map.journal);
           if (map.tasks) setTasks(map.tasks);
           if (map.orders) setOrders(map.orders);
           if (map.clients) setClients(map.clients);
@@ -182,6 +189,9 @@ function MainApp({ session }) {
   useEffect(() => { if (!loading) sync("study", study); }, [study, loading, sync]);
   useEffect(() => { if (!loading) sync("grades", grades); }, [grades, loading, sync]);
   useEffect(() => { if (!loading) sync("mood", mood); }, [mood, loading, sync]);
+  useEffect(() => { if (!loading) sync("mental", mental); }, [mental, loading, sync]);
+  useEffect(() => { if (!loading) sync("physical", physical); }, [physical, loading, sync]);
+  useEffect(() => { if (!loading) sync("journal", journal); }, [journal, loading, sync]);
   useEffect(() => { if (!loading) sync("tasks", tasks); }, [tasks, loading, sync]);
   useEffect(() => { if (!loading) sync("orders", orders); }, [orders, loading, sync]);
   useEffect(() => { if (!loading) sync("clients", clients); }, [clients, loading, sync]);
@@ -199,7 +209,6 @@ function MainApp({ session }) {
   const [countV, setCountV] = useState("");
 
   const [fHabit, setFHabit] = useState({name:"",icon:"✅",type:"check",unit:"",target:"",freq:{type:"daily",x:2,days:[],day:1}});
-  const [fSleep, setFSleep] = useState({date:today(),time:"07:30",quality:4});
   const [fFin, setFFin] = useState({date:today(),type:"expense",category:"",amount:"",note:""});
   const [fFgoal, setFFgoal] = useState({name:"",target:"",saved:""});
   const [fRecur, setFRecur] = useState({name:"",type:"expense",amount:"",day:1,note:""});
@@ -207,7 +216,8 @@ function MainApp({ session }) {
   const [fSub, setFSub] = useState({name:"",color:"#5b8dd9"});
   const [fStudy, setFStudy] = useState({subId:"",date:today(),dur:"01:00",note:""});
   const [fGrade, setFGrade] = useState({subId:"",date:today(),label:"",grade:"1",weight:5});
-  const [fMood, setFMood] = useState({date:today(),value:3,note:""});
+  const [fHealth, setFHealth] = useState({type:"physical", date:today(), value:3, note:"", sleepTime:"07:30"});
+  const [fJournal, setFJournal] = useState({date:today(), morning:"", random:"", evening:""});
   const [fTask, setFTask] = useState({title:"",due:"",category:"school",priority:"medium",note:""});
   const [fOrder, setFOrder] = useState({clientId:"",desc:"",amount:"",date:today(),status:"pending"});
   const [fClient, setFClient] = useState({name:"",contact:"",note:""});
@@ -226,9 +236,6 @@ function MainApp({ session }) {
   const logCount = () => { setHlog(p=>({...p,[`${today()}_${mCount}`]:parseFloat(countV)||0})); setMCount(null); };
   const addHabit = () => { if(!fHabit.name.trim())return; setHabits(p=>[...p,{...fHabit,id:Date.now(),color:pc(p.length),target:parseFloat(fHabit.target)||0}]); setFHabit({name:"",icon:"✅",type:"check",unit:"",target:"",freq:{type:"daily",x:2,days:[],day:1}}); setMHabit(false); };
 
-  const sleepAvg = sleep.slice(0,7).length?Math.round(sleep.slice(0,7).reduce((s,x)=>s+x.minutes,0)/Math.min(sleep.length,7)):0;
-  const logSleep = () => { if(!fSleep.time)return; setSleep(p=>[...p.filter(s=>s.date!==fSleep.date),{...fSleep,minutes:toMins(fSleep.time)}].sort((a,b)=>b.date.localeCompare(a.date))); };
-
   const mFin=allFin.filter(f=>f.date.startsWith(thisMonth())); const mInc=mFin.filter(f=>f.type==="income").reduce((s,f)=>s+f.amount,0); const mExp=mFin.filter(f=>f.type==="expense").reduce((s,f)=>s+f.amount,0); const mBal=mInc-mExp;
   const addFin = () => { if(!fFin.amount||!fFin.category)return; setFin(p=>[{...fFin,id:Date.now(),amount:parseFloat(fFin.amount)},...p]); setFFin(p=>({...p,category:"",amount:"",note:""})); };
   const addRecur = () => { if(!fRecur.name||!fRecur.amount)return; setRecur(p=>[...p,{...fRecur,id:Date.now(),amount:parseFloat(fRecur.amount)}]); setFRecur({name:"",type:"expense",amount:"",day:1,note:""}); setMRecur(false); };
@@ -240,8 +247,38 @@ function MainApp({ session }) {
   const logGrade = () => { if(!fGrade.subId||!fGrade.label||!fGrade.grade)return; setGrades(p=>[...p,{...fGrade,id:Date.now(),gnum:gradeNum(fGrade.grade),weight:parseInt(fGrade.weight)||5}]); setFGrade(p=>({...p,label:"",grade:"1",weight:5})); };
   const subStats = (sid) => { const ls=study.filter(s=>s.subId==sid); const gs=grades.filter(g=>g.subId==sid); const totalMins=ls.reduce((s,l)=>s+l.minutes,0); const wavg=gs.length?gs.reduce((s,g)=>s+g.gnum*g.weight,0)/gs.reduce((s,g)=>s+g.weight,0):null; return {totalMins,wavg}; };
 
-  const avgMood=mood.slice(0,7).length?(mood.slice(0,7).reduce((s,m)=>s+m.value,0)/Math.min(mood.length,7)).toFixed(1):"—";
-  const logMood = () => { setMood(p=>[...p.filter(m=>m.date!==fMood.date),{...fMood}].sort((a,b)=>b.date.localeCompare(a.date))); setFMood(p=>({...p,note:""})); };
+  /* Unified Health Logging */
+  const logHealth = () => {
+    if (fHealth.type === "sleep") {
+      if(!fHealth.sleepTime) return;
+      setSleep(p=>[...p.filter(s=>s.date!==fHealth.date), {date: fHealth.date, time: fHealth.sleepTime, quality: fHealth.value, minutes: toMins(fHealth.sleepTime)}].sort((a,b)=>b.date.localeCompare(a.date)));
+    } else if (fHealth.type === "mood") {
+      setMood(p=>[...p.filter(m=>m.date!==fHealth.date), {date: fHealth.date, value: fHealth.value, note: fHealth.note}].sort((a,b)=>b.date.localeCompare(a.date)));
+    } else if (fHealth.type === "mental") {
+      setMental(p=>[...p.filter(m=>m.date!==fHealth.date), {date: fHealth.date, value: fHealth.value, note: fHealth.note}].sort((a,b)=>b.date.localeCompare(a.date)));
+    } else if (fHealth.type === "physical") {
+      setPhysical(p=>[...p.filter(m=>m.date!==fHealth.date), {date: fHealth.date, value: fHealth.value, note: fHealth.note}].sort((a,b)=>b.date.localeCompare(a.date)));
+    }
+    setFHealth(p=>({...p, note:""})); // clear note after save
+  };
+
+  /* Journal Logic */
+  const handleJournalDate = (d) => {
+    const ex = journal.find(j => j.date === d);
+    setFJournal(ex || {date: d, morning: "", random: "", evening: ""});
+  };
+  const logJournal = () => {
+    setJournal(p => {
+      const ex = p.filter(j => j.date !== fJournal.date);
+      return [...ex, {...fJournal}].sort((a,b)=>b.date.localeCompare(a.date));
+    });
+  };
+  // Automatically load today's journal on mount if available
+  useEffect(() => {
+    const ex = journal.find(j => j.date === today());
+    if (ex) setFJournal(ex);
+  }, [journal]);
+
   const overdue=tasks.filter(t=>!t.done&&t.due&&t.due<today()).length;
   const addTask = () => { if(!fTask.title)return; setTasks(p=>[...p,{...fTask,id:Date.now(),done:false}]); setFTask({title:"",due:"",category:"school",priority:"medium",note:""}); setMTask(false); };
 
@@ -256,6 +293,10 @@ function MainApp({ session }) {
     const rExp=rf.filter(f=>f.type==="expense").reduce((s,f)=>s+f.amount,0);
     const rm=mood.filter(m=>m.date.startsWith(repMonth));
     const avgM=rm.length?(rm.reduce((s,m)=>s+m.value,0)/rm.length).toFixed(1):"—";
+    const rme=mental.filter(m=>m.date.startsWith(repMonth));
+    const avgMen=rme.length?(rme.reduce((s,m)=>s+m.value,0)/rme.length).toFixed(1):"—";
+    const rph=physical.filter(m=>m.date.startsWith(repMonth));
+    const avgPhy=rph.length?(rph.reduce((s,m)=>s+m.value,0)/rph.length).toFixed(1):"—";
     const rs=sleep.filter(s=>s.date.startsWith(repMonth));
     const avgS=rs.length?hm(Math.round(rs.reduce((s,x)=>s+x.minutes,0)/rs.length)):"—";
     const dc=dimDays(repMonth);
@@ -268,12 +309,15 @@ function MainApp({ session }) {
     const rb=biz.filter(e=>e.date.startsWith(repMonth));
     const rRev=rb.filter(e=>e.type==="revenue").reduce((s,e)=>s+e.amount,0);
     const rBExp=rb.filter(e=>e.type==="expense").reduce((s,e)=>s+e.amount,0);
-    return {rInc,rExp,rBal:rInc-rExp,avgM,avgS,hStats,gStats,rRev,rBExp,rProfit:rRev-rBExp};
-  },[repMonth,fin,recur,mood,sleep,habits,hlog,goals,biz]);
+    return {rInc,rExp,rBal:rInc-rExp,avgM,avgS,avgMen,avgPhy,hStats,gStats,rRev,rBExp,rProfit:rRev-rBExp};
+  },[repMonth,fin,recur,mood,sleep,mental,physical,habits,hlog,goals,biz]);
 
   const freqLbl = (freq) => {
     if(!freq||freq.type==="daily")return"Daily"; if(freq.type==="every_x_days")return`Every ${freq.x||2} days`; if(freq.type==="weekly")return`Weekly (${(freq.days||[]).map(i=>WDAYS[i]).join(", ")})`; if(freq.type==="monthly")return`Monthly (day ${freq.day||1})`; return"";
   };
+
+  const avgMood=mood.slice(0,7).length?(mood.slice(0,7).reduce((s,m)=>s+m.value,0)/Math.min(mood.length,7)).toFixed(1):"—";
+  const sleepAvg = sleep.slice(0,7).length?Math.round(sleep.slice(0,7).reduce((s,x)=>s+x.minutes,0)/Math.min(sleep.length,7)):0;
 
   if (loading) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,color:C.muted,fontFamily:"'IBM Plex Mono',monospace",flexDirection:"column",gap:12}}>
@@ -348,33 +392,249 @@ function MainApp({ session }) {
           {habits.length===0&&<div style={{color:C.muted,textAlign:"center",marginTop:40}}>No habits yet.</div>}
         </>}
 
-        {/* ══ SLEEP ══ */}
-        {tab==="Sleep"&&<>
-          <div className="card">
-            <T>Log Sleep</T>
-            <div className="row">
-              <div style={{flex:1}}><L>Date</L><input type="date" className="inp" value={fSleep.date} onChange={e=>setFSleep(p=>({...p,date:e.target.value}))}/></div>
-              <div style={{flex:1}}><L>Duration (h:mm)</L><input type="text" className="inp" placeholder="7:30" value={fSleep.time} onChange={e=>setFSleep(p=>({...p,time:e.target.value.replace(/[^0-9:]/g,"")}))}/><div className="hint">8:05 = 8 hrs 5 min</div></div>
-              <div style={{flex:1}}><L>Quality</L><select className="sel" style={{width:"100%"}} value={fSleep.quality} onChange={e=>setFSleep(p=>({...p,quality:+e.target.value}))}>{[1,2,3,4,5].map(v=><option key={v} value={v}>{v} — {["Terrible","Poor","Okay","Good","Perfect"][v-1]}</option>)}</select></div>
-            </div>
-            <button className="btn bta" style={{marginTop:12}} onClick={logSleep}>Log</button>
+        {/* ══ TASKS ══ */}
+        {tab==="Tasks"&&<>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <T>Tasks & Deadlines</T>
+            <button className="btn bta" onClick={()=>setMTask(true)}>+ Add</button>
           </div>
-          {sleep.length>0&&<>
-            <div className="row" style={{marginBottom:11}}>
-              {[{l:"Avg 7d",v:hm(sleepAvg)},{l:"Last night",v:hm(sleep[0]?.minutes||0)},{l:"Avg quality",v:(sleep.slice(0,7).reduce((s,x)=>s+x.quality,0)/Math.min(sleep.length,7)).toFixed(1)+"/5"}].map(s=><Stat key={s.l} label={s.l} value={s.v} color={C.accent}/>)}
-            </div>
-            <div className="card" style={{padding:"9px 12px"}}>
-              {sleep.slice(0,14).map(s=>(
-                <div key={s.date} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}>
-                  <div style={{width:65,fontSize:".7rem",color:C.muted}}>{fmt(s.date)}</div>
-                  <div style={{flex:1}}><Bar pct={(s.minutes/600)*100} color={s.minutes>=420?C.accent:C.bad}/></div>
-                  <div style={{width:36,textAlign:"right",color:s.minutes>=420?C.accent:C.bad,fontSize:".77rem"}}>{hm(s.minutes)}</div>
-                  <div style={{fontSize:".64rem",color:C.muted}}>★{s.quality}</div>
-                  <button className="btx" onClick={()=>setSleep(p=>p.filter(x=>x.date!==s.date))}>✕</button>
-                </div>
-              ))}
-            </div>
+          {["high","medium","low"].map(prio=>{
+            const ts=tasks.filter(t=>t.priority===prio&&!t.done);
+            if(!ts.length)return null;
+            const [pc2,pl]=TPRIO[prio];
+            return(
+              <div key={prio} style={{marginBottom:10}}>
+                <div style={{fontSize:".62rem",color:pc2,textTransform:"uppercase",letterSpacing:".08em",marginBottom:5}}>{pl} priority</div>
+                {ts.map(t=>{
+                  const od=t.due&&t.due<today();
+                  return(
+                    <div key={t.id} className="trow">
+                      <MoveBtns setter={setTasks} id={t.id} />
+                      <button style={{width:15,height:15,borderRadius:"50%",border:`1.5px solid ${od?C.bad:C.border}`,background:"transparent",cursor:"pointer",flexShrink:0,marginTop:3}} onClick={()=>setTasks(p=>p.map(x=>x.id===t.id?{...x,done:true}:x))}/>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:".82rem",color:od?C.bad:C.text}}>{t.title}</div>
+                        <div style={{display:"flex",gap:5,marginTop:3,flexWrap:"wrap"}}>
+                          <Chip color={pc2}>{t.category}</Chip>
+                          {t.due&&<Chip color={od?C.bad:C.muted}>{od?"⚠ ":""}{fmt(t.due)}</Chip>}
+                        </div>
+                        {t.note&&<div style={{fontSize:".64rem",color:C.muted,marginTop:2}}>{t.note}</div>}
+                      </div>
+                      <button className="btx" onClick={()=>setTasks(p=>p.filter(x=>x.id!==t.id))}>✕</button>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+          {tasks.filter(t=>t.done).length>0&&<>
+            <Hr/>
+            <div style={{fontSize:".62rem",color:C.muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:5}}>Completed</div>
+            {tasks.filter(t=>t.done).slice(0,5).map(t=>(
+              <div key={t.id} className="trow" style={{opacity:.45}}>
+                <div style={{width:14,height:14,borderRadius:"50%",background:C.good,display:"flex",alignItems:"center",justifyContent:"center",fontSize:".55rem",color:"#fff",marginTop:2}}>✓</div>
+                <div style={{flex:1,fontSize:".79rem",textDecoration:"line-through",color:C.muted}}>{t.title}</div>
+                <button className="btx" onClick={()=>setTasks(p=>p.filter(x=>x.id!==t.id))}>✕</button>
+              </div>
+            ))}
           </>}
+          {tasks.length===0&&<div style={{color:C.muted,textAlign:"center",marginTop:40}}>No tasks yet.</div>}
+        </>}
+
+        {/* ══ GOALS ══ */}
+        {tab==="Goals"&&<>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <T>Goals</T>
+            <button className="btn bta" onClick={()=>setMGoal(true)}>+ Add</button>
+          </div>
+          {goals.length===0&&<div style={{color:C.muted,textAlign:"center",marginTop:40}}>No goals yet.</div>}
+          {goals.map(g=>{
+            if(g.type==="completable")return(
+              <div key={g.id} className="card">
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{display:"flex",alignItems:"center"}}>
+                    <MoveBtns setter={setGoals} id={g.id} />
+                    <div><div style={{fontSize:".85rem",display:"flex",alignItems:"center",gap:7}}>{g.done&&<span style={{color:C.good}}>✓</span>}{g.title}</div><div style={{marginTop:4}}><Chip>Completable</Chip></div></div>
+                  </div>
+                  <div style={{display:"flex",gap:7}}>
+                    <button className="btn" style={{background:g.done?C.good+"22":C.border,color:g.done?C.good:C.muted,fontSize:".68rem",padding:"5px 10px"}} onClick={()=>setGoals(p=>p.map(x=>x.id===g.id?{...x,done:!x.done}:x))}>{g.done?"✓ Done":"Mark done"}</button>
+                    <button className="btx" onClick={()=>setGoals(p=>p.filter(x=>x.id!==g.id))}>✕</button>
+                  </div>
+                </div>
+              </div>
+            );
+            const pct=Math.min((g.current/g.target)*100,100);
+            return(
+              <div key={g.id} className="card">
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <div style={{display:"flex",alignItems:"center"}}>
+                    <MoveBtns setter={setGoals} id={g.id} />
+                    <div><div style={{fontSize:".85rem"}}>{g.title}</div><div style={{fontSize:".67rem",color:C.muted,marginTop:2}}>{g.current} / {g.target} {g.unit}</div></div>
+                  </div>
+                  <button className="btx" onClick={()=>setGoals(p=>p.filter(x=>x.id!==g.id))}>✕</button>
+                </div>
+                <div style={{marginTop:8}}><Bar pct={pct} color={pct>=100?C.good:C.accent}/></div>
+                <div style={{display:"flex",gap:7,marginTop:8,alignItems:"center"}}>
+                  <input type="number" className="inp" style={{width:82}} value={g.current} min={0} max={g.target} onChange={e=>setGoals(p=>p.map(x=>x.id===g.id?{...x,current:Math.min(parseFloat(e.target.value)||0,x.target)}:x))}/>
+                  <span style={{fontSize:".68rem",color:C.muted}}>{g.unit} — {Math.round(pct)}%</span>
+                </div>
+              </div>
+            );
+          })}
+        </>}
+
+        {/* ══ HEALTH (COMBINED) ══ */}
+        {tab==="Health"&&<>
+          <div className="card">
+            <T>Log Health & Wellness</T>
+            <div className="row" style={{marginBottom:10}}>
+               <div style={{flex:1}}><L>Metric</L><select className="sel" style={{width:"100%"}} value={fHealth.type} onChange={e=>setFHealth(p=>({...p,type:e.target.value}))}>
+                  <option value="physical">Physical Health</option>
+                  <option value="mental">Mental Health</option>
+                  <option value="mood">Mood</option>
+                  <option value="sleep">Sleep</option>
+               </select></div>
+               <div><L>Date</L><input type="date" className="inp" value={fHealth.date} onChange={e=>setFHealth(p=>({...p,date:e.target.value}))}/></div>
+            </div>
+
+            {fHealth.type === "sleep" ? (
+               <div className="row" style={{marginTop:7}}>
+                  <div style={{flex:1}}><L>Duration (h:mm)</L><input type="text" className="inp" placeholder="7:30" value={fHealth.sleepTime} onChange={e=>setFHealth(p=>({...p,sleepTime:e.target.value.replace(/[^0-9:]/g,"")}))}/></div>
+                  <div style={{flex:1}}><L>Quality</L><select className="sel" style={{width:"100%"}} value={fHealth.value} onChange={e=>setFHealth(p=>({...p,value:+e.target.value}))}>{[1,2,3,4,5].map(v=><option key={v} value={v}>{v} — {["Terrible","Poor","Okay","Good","Perfect"][v-1]}</option>)}</select></div>
+               </div>
+            ) : (
+               <>
+                  <L>Rating</L>
+                  <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
+                    {MOODS.map(m=><button key={m.v} className={`moodbtn${fHealth.value===m.v?" on":""}`} onClick={()=>setFHealth(p=>({...p,value:m.v}))}>{m.e}<div style={{fontSize:".54rem",color:C.muted,marginTop:3}}>{m.l}</div></button>)}
+                  </div>
+                  <L>Note / Symptoms</L><input className="inp" placeholder="What's causing this..." value={fHealth.note} onChange={e=>setFHealth(p=>({...p,note:e.target.value}))}/>
+               </>
+            )}
+            <button className="btn bta" style={{marginTop:12}} onClick={logHealth}>Save</button>
+          </div>
+
+          <div style={{fontSize:".62rem",color:C.muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:5,marginTop:15}}>History</div>
+          <div className="card" style={{padding:"8px 12px"}}>
+            {(()=>{
+               const hDates = [...new Set([...sleep.map(s=>s.date),...mood.map(m=>m.date),...mental.map(m=>m.date),...physical.map(p=>p.date)])].sort((a,b)=>b.localeCompare(a));
+               if(hDates.length===0) return <div style={{color:C.muted,textAlign:"center"}}>No logs yet.</div>;
+               return hDates.slice(0, 20).map(d => {
+                 const s = sleep.find(x=>x.date===d);
+                 const mo = mood.find(x=>x.date===d);
+                 const me = mental.find(x=>x.date===d);
+                 const ph = physical.find(x=>x.date===d);
+                 return (
+                    <div key={d} style={{padding:"10px 0", borderBottom:`1px solid ${C.border}`}}>
+                       <div style={{fontSize:".7rem",color:C.accent,marginBottom:4,fontFamily:"'Lora',serif"}}>{fmt(d)}</div>
+                       <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                          {s && <div style={{display:"flex",gap:8,alignItems:"center",fontSize:".75rem"}}><Chip bg={C.blue2+"22"} color={C.blue2}>Sleep</Chip> <span style={{flex:1}}>{hm(s.minutes)}</span> <span style={{color:C.muted}}>★{s.quality}</span> <button className="btx" style={{padding:"0 4px"}} onClick={()=>setSleep(p=>p.filter(x=>x.date!==d))}>✕</button></div>}
+                          {mo && <div style={{display:"flex",gap:8,alignItems:"center",fontSize:".75rem"}}><Chip bg={C.accent+"22"} color={C.accent}>Mood</Chip> <span>{MOODS.find(x=>x.v===mo.value)?.e}</span> <span style={{flex:1,color:C.muted,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{mo.note}</span> <button className="btx" style={{padding:"0 4px"}} onClick={()=>setMood(p=>p.filter(x=>x.date!==d))}>✕</button></div>}
+                          {me && <div style={{display:"flex",gap:8,alignItems:"center",fontSize:".75rem"}}><Chip bg={C.teal+"22"} color={C.teal}>Mental</Chip> <span>{MOODS.find(x=>x.v===me.value)?.e}</span> <span style={{flex:1,color:C.muted,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{me.note}</span> <button className="btx" style={{padding:"0 4px"}} onClick={()=>setMental(p=>p.filter(x=>x.date!==d))}>✕</button></div>}
+                          {ph && <div style={{display:"flex",gap:8,alignItems:"center",fontSize:".75rem"}}><Chip bg={C.good+"22"} color={C.good}>Physical</Chip> <span>{MOODS.find(x=>x.v===ph.value)?.e}</span> <span style={{flex:1,color:C.muted,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ph.note}</span> <button className="btx" style={{padding:"0 4px"}} onClick={()=>setPhysical(p=>p.filter(x=>x.date!==d))}>✕</button></div>}
+                       </div>
+                    </div>
+                 );
+               });
+            })()}
+          </div>
+        </>}
+
+        {/* ══ JOURNAL ══ */}
+        {tab==="Journal"&&<>
+           <div className="card">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                 <div style={{fontFamily:"'Lora',serif",fontSize:".93rem",fontWeight:500,color:C.text}}>Journal Entry</div>
+                 <input type="date" className="inp" style={{width:"auto"}} value={fJournal.date} onChange={e=>handleJournalDate(e.target.value)}/>
+              </div>
+
+              <L>Morning: Dreams & Thoughts</L>
+              <textarea className="inp" style={{minHeight:70, marginBottom:8}} placeholder="What did you dream about? How are you waking up?" value={fJournal.morning} onChange={e=>setFJournal(p=>({...p,morning:e.target.value}))}/>
+
+              <L>Notes & Ramblings</L>
+              <textarea className="inp" style={{minHeight:70, marginBottom:8}} placeholder="Random stuff, ideas, what's bothering you..." value={fJournal.random} onChange={e=>setFJournal(p=>({...p,random:e.target.value}))}/>
+
+              <L>Evening: Day Summary</L>
+              <textarea className="inp" style={{minHeight:70, marginBottom:12}} placeholder="What did you do? How was the day overall?" value={fJournal.evening} onChange={e=>setFJournal(p=>({...p,evening:e.target.value}))}/>
+
+              <button className="btn bta" onClick={logJournal}>Save Entry</button>
+           </div>
+
+           <div style={{fontSize:".62rem",color:C.muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:5,marginTop:15}}>Past Entries</div>
+           {journal.filter(j=>j.morning||j.random||j.evening).slice(0, 10).map(j=>(
+              <div key={j.date} className="card" style={{padding:"12px"}}>
+                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{fontFamily:"'Lora',serif",color:C.accent,fontSize:".9rem"}}>{fmt(j.date)}</div>
+                    <button className="btx" onClick={()=>setJournal(p=>p.filter(x=>x.date!==j.date))}>✕</button>
+                 </div>
+                 {j.morning&&<><div style={{fontSize:".6rem",color:C.muted,marginTop:6,textTransform:"uppercase"}}>Morning</div><div style={{fontSize:".8rem",whiteSpace:"pre-wrap"}}>{j.morning}</div></>}
+                 {j.random&&<><div style={{fontSize:".6rem",color:C.muted,marginTop:6,textTransform:"uppercase"}}>Notes</div><div style={{fontSize:".8rem",whiteSpace:"pre-wrap"}}>{j.random}</div></>}
+                 {j.evening&&<><div style={{fontSize:".6rem",color:C.muted,marginTop:6,textTransform:"uppercase"}}>Evening</div><div style={{fontSize:".8rem",whiteSpace:"pre-wrap"}}>{j.evening}</div></>}
+              </div>
+           ))}
+           {journal.filter(j=>j.morning||j.random||j.evening).length===0&&<div style={{color:C.muted,textAlign:"center"}}>No entries yet.</div>}
+        </>}
+
+        {/* ══ SCHOOL ══ */}
+        {tab==="School"&&<>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <T>School Tracker</T>
+            <button className="btn bta" onClick={()=>setMSub(true)}>+ Subject</button>
+          </div>
+          {subs.map(sub=>{
+            const st=subStats(sub.id);
+            const sg=grades.filter(g=>g.subId==sub.id).sort((a,b)=>b.date.localeCompare(a.date));
+            return(
+              <div key={sub.id} className="sc">
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7}}>
+                    <MoveBtns setter={setSubs} id={sub.id} />
+                    <div style={{width:8,height:8,borderRadius:"50%",background:sub.color}}/>
+                    <span style={{fontFamily:"'Lora',serif",fontSize:".9rem"}}>{sub.name}</span>
+                  </div>
+                  <div style={{display:"flex",gap:7,alignItems:"center"}}>
+                    <span style={{fontSize:".67rem",color:C.muted}}>{hm(st.totalMins)} studied</span>
+                    {st.wavg!==null&&<Chip color={gc(st.wavg)} bg={gc(st.wavg)+"22"}>{st.wavg.toFixed(2)}</Chip>}
+                    <button className="btx" onClick={()=>{setSubs(p=>p.filter(s=>s.id!==sub.id));setStudy(p=>p.filter(s=>s.subId!=sub.id));setGrades(p=>p.filter(g=>g.subId!=sub.id));}}>✕</button>
+                  </div>
+                </div>
+                {sg.slice(0,4).map(g=>(
+                  <div key={g.id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.border}`,fontSize:".7rem",alignItems:"center",gap:6}}>
+                    <span style={{color:C.muted,flex:1}}>{g.label}</span>
+                    <span style={{color:C.muted}}>{fmt(g.date)}</span>
+                    <span style={{color:C.muted,fontSize:".6rem"}}>w:{g.weight}</span>
+                    <Chip color={gc(g.gnum)} bg={gc(g.gnum)+"22"}>{g.grade}</Chip>
+                    <button className="btx" style={{padding:"1px 5px"}} onClick={()=>setGrades(p=>p.filter(x=>x.id!==g.id))}>✕</button>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+          {subs.length===0&&<div style={{color:C.muted,textAlign:"center",marginTop:30}}>No subjects yet.</div>}
+          <Hr/>
+          <div className="card">
+            <T>Log Study Session</T>
+            <div className="row">
+              <div style={{flex:1}}><L>Subject</L><select className="sel" style={{width:"100%"}} value={fStudy.subId} onChange={e=>setFStudy(p=>({...p,subId:e.target.value}))}><option value="">Select…</option>{subs.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+              <div><L>Duration (h:mm)</L><input type="text" className="inp" style={{width:80}} placeholder="1:30" value={fStudy.dur} onChange={e=>setFStudy(p=>({...p,dur:e.target.value.replace(/[^0-9:]/g,"")}))}/></div>
+              <div><L>Date</L><input type="date" className="inp" value={fStudy.date} onChange={e=>setFStudy(p=>({...p,date:e.target.value}))}/></div>
+            </div>
+            <L>Note</L><input className="inp" placeholder="Topic covered…" value={fStudy.note} onChange={e=>setFStudy(p=>({...p,note:e.target.value}))}/>
+            <button className="btn bta" style={{marginTop:11}} onClick={logStudy}>Log Session</button>
+          </div>
+          <div className="card">
+            <T>Log Grade (Czech 1–5)</T>
+            <div className="row">
+              <div style={{flex:1}}><L>Subject</L><select className="sel" style={{width:"100%"}} value={fGrade.subId} onChange={e=>setFGrade(p=>({...p,subId:e.target.value}))}><option value="">Select…</option>{subs.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+              <div style={{flex:1}}><L>Assignment / Test</L><input className="inp" placeholder="Test, Assignment…" value={fGrade.label} onChange={e=>setFGrade(p=>({...p,label:e.target.value}))}/></div>
+            </div>
+            <div className="row" style={{marginTop:5}}>
+              <div><L>Grade</L><select className="sel" value={fGrade.grade} onChange={e=>setFGrade(p=>({...p,grade:e.target.value}))}>{CZ_GRADES.map(g=><option key={g} value={g}>{g}</option>)}</select></div>
+              <div><L>Weight (1–10)</L><input type="number" className="inp" style={{width:68}} min={1} max={10} value={fGrade.weight} onChange={e=>setFGrade(p=>({...p,weight:e.target.value}))}/></div>
+              <div><L>Date</L><input type="date" className="inp" value={fGrade.date} onChange={e=>setFGrade(p=>({...p,date:e.target.value}))}/></div>
+            </div>
+            <div className="hint" style={{marginTop:4}}>1 = best grade · Weighted mean</div>
+            <button className="btn bta" style={{marginTop:11}} onClick={logGrade}>Log Grade</button>
+          </div>
         </>}
 
         {/* ══ FINANCE ══ */}
@@ -444,183 +704,6 @@ function MainApp({ session }) {
               </div>
             ))}
           </div>
-        </>}
-
-        {/* ══ GOALS ══ */}
-        {tab==="Goals"&&<>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <T>Goals</T>
-            <button className="btn bta" onClick={()=>setMGoal(true)}>+ Add</button>
-          </div>
-          {goals.length===0&&<div style={{color:C.muted,textAlign:"center",marginTop:40}}>No goals yet.</div>}
-          {goals.map(g=>{
-            if(g.type==="completable")return(
-              <div key={g.id} className="card">
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div style={{display:"flex",alignItems:"center"}}>
-                    <MoveBtns setter={setGoals} id={g.id} />
-                    <div><div style={{fontSize:".85rem",display:"flex",alignItems:"center",gap:7}}>{g.done&&<span style={{color:C.good}}>✓</span>}{g.title}</div><div style={{marginTop:4}}><Chip>Completable</Chip></div></div>
-                  </div>
-                  <div style={{display:"flex",gap:7}}>
-                    <button className="btn" style={{background:g.done?C.good+"22":C.border,color:g.done?C.good:C.muted,fontSize:".68rem",padding:"5px 10px"}} onClick={()=>setGoals(p=>p.map(x=>x.id===g.id?{...x,done:!x.done}:x))}>{g.done?"✓ Done":"Mark done"}</button>
-                    <button className="btx" onClick={()=>setGoals(p=>p.filter(x=>x.id!==g.id))}>✕</button>
-                  </div>
-                </div>
-              </div>
-            );
-            const pct=Math.min((g.current/g.target)*100,100);
-            return(
-              <div key={g.id} className="card">
-                <div style={{display:"flex",justifyContent:"space-between"}}>
-                  <div style={{display:"flex",alignItems:"center"}}>
-                    <MoveBtns setter={setGoals} id={g.id} />
-                    <div><div style={{fontSize:".85rem"}}>{g.title}</div><div style={{fontSize:".67rem",color:C.muted,marginTop:2}}>{g.current} / {g.target} {g.unit}</div></div>
-                  </div>
-                  <button className="btx" onClick={()=>setGoals(p=>p.filter(x=>x.id!==g.id))}>✕</button>
-                </div>
-                <div style={{marginTop:8}}><Bar pct={pct} color={pct>=100?C.good:C.accent}/></div>
-                <div style={{display:"flex",gap:7,marginTop:8,alignItems:"center"}}>
-                  <input type="number" className="inp" style={{width:82}} value={g.current} min={0} max={g.target} onChange={e=>setGoals(p=>p.map(x=>x.id===g.id?{...x,current:Math.min(parseFloat(e.target.value)||0,x.target)}:x))}/>
-                  <span style={{fontSize:".68rem",color:C.muted}}>{g.unit} — {Math.round(pct)}%</span>
-                </div>
-              </div>
-            );
-          })}
-        </>}
-
-        {/* ══ SCHOOL ══ */}
-        {tab==="School"&&<>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <T>School Tracker</T>
-            <button className="btn bta" onClick={()=>setMSub(true)}>+ Subject</button>
-          </div>
-          {subs.map(sub=>{
-            const st=subStats(sub.id);
-            const sg=grades.filter(g=>g.subId==sub.id).sort((a,b)=>b.date.localeCompare(a.date));
-            return(
-              <div key={sub.id} className="sc">
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
-                  <div style={{display:"flex",alignItems:"center",gap:7}}>
-                    <MoveBtns setter={setSubs} id={sub.id} />
-                    <div style={{width:8,height:8,borderRadius:"50%",background:sub.color}}/>
-                    <span style={{fontFamily:"'Lora',serif",fontSize:".9rem"}}>{sub.name}</span>
-                  </div>
-                  <div style={{display:"flex",gap:7,alignItems:"center"}}>
-                    <span style={{fontSize:".67rem",color:C.muted}}>{hm(st.totalMins)} studied</span>
-                    {st.wavg!==null&&<Chip color={gc(st.wavg)} bg={gc(st.wavg)+"22"}>{st.wavg.toFixed(2)}</Chip>}
-                    <button className="btx" onClick={()=>{setSubs(p=>p.filter(s=>s.id!==sub.id));setStudy(p=>p.filter(s=>s.subId!=sub.id));setGrades(p=>p.filter(g=>g.subId!=sub.id));}}>✕</button>
-                  </div>
-                </div>
-                {sg.slice(0,4).map(g=>(
-                  <div key={g.id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.border}`,fontSize:".7rem",alignItems:"center",gap:6}}>
-                    <span style={{color:C.muted,flex:1}}>{g.label}</span>
-                    <span style={{color:C.muted}}>{fmt(g.date)}</span>
-                    <span style={{color:C.muted,fontSize:".6rem"}}>w:{g.weight}</span>
-                    <Chip color={gc(g.gnum)} bg={gc(g.gnum)+"22"}>{g.grade}</Chip>
-                    <button className="btx" style={{padding:"1px 5px"}} onClick={()=>setGrades(p=>p.filter(x=>x.id!==g.id))}>✕</button>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-          {subs.length===0&&<div style={{color:C.muted,textAlign:"center",marginTop:30}}>No subjects yet.</div>}
-          <Hr/>
-          <div className="card">
-            <T>Log Study Session</T>
-            <div className="row">
-              <div style={{flex:1}}><L>Subject</L><select className="sel" style={{width:"100%"}} value={fStudy.subId} onChange={e=>setFStudy(p=>({...p,subId:e.target.value}))}><option value="">Select…</option>{subs.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-              <div><L>Duration (h:mm)</L><input type="text" className="inp" style={{width:80}} placeholder="1:30" value={fStudy.dur} onChange={e=>setFStudy(p=>({...p,dur:e.target.value.replace(/[^0-9:]/g,"")}))}/></div>
-              <div><L>Date</L><input type="date" className="inp" value={fStudy.date} onChange={e=>setFStudy(p=>({...p,date:e.target.value}))}/></div>
-            </div>
-            <L>Note</L><input className="inp" placeholder="Topic covered…" value={fStudy.note} onChange={e=>setFStudy(p=>({...p,note:e.target.value}))}/>
-            <button className="btn bta" style={{marginTop:11}} onClick={logStudy}>Log Session</button>
-          </div>
-          <div className="card">
-            <T>Log Grade (Czech 1–5)</T>
-            <div className="row">
-              <div style={{flex:1}}><L>Subject</L><select className="sel" style={{width:"100%"}} value={fGrade.subId} onChange={e=>setFGrade(p=>({...p,subId:e.target.value}))}><option value="">Select…</option>{subs.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-              <div style={{flex:1}}><L>Assignment / Test</L><input className="inp" placeholder="Test, Assignment…" value={fGrade.label} onChange={e=>setFGrade(p=>({...p,label:e.target.value}))}/></div>
-            </div>
-            <div className="row" style={{marginTop:5}}>
-              <div><L>Grade</L><select className="sel" value={fGrade.grade} onChange={e=>setFGrade(p=>({...p,grade:e.target.value}))}>{CZ_GRADES.map(g=><option key={g} value={g}>{g}</option>)}</select></div>
-              <div><L>Weight (1–10)</L><input type="number" className="inp" style={{width:68}} min={1} max={10} value={fGrade.weight} onChange={e=>setFGrade(p=>({...p,weight:e.target.value}))}/></div>
-              <div><L>Date</L><input type="date" className="inp" value={fGrade.date} onChange={e=>setFGrade(p=>({...p,date:e.target.value}))}/></div>
-            </div>
-            <div className="hint" style={{marginTop:4}}>1 = best grade · Weighted mean</div>
-            <button className="btn bta" style={{marginTop:11}} onClick={logGrade}>Log Grade</button>
-          </div>
-        </>}
-
-        {/* ══ MOOD ══ */}
-        {tab==="Mood"&&<>
-          <div className="card">
-            <T>Mood</T>
-            <L>Date</L><input type="date" className="inp" value={fMood.date} onChange={e=>setFMood(p=>({...p,date:e.target.value}))}/>
-            <L>How are you feeling?</L>
-            <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
-              {MOODS.map(m=><button key={m.v} className={`moodbtn${fMood.value===m.v?" on":""}`} onClick={()=>setFMood(p=>({...p,value:m.v}))}>{m.e}<div style={{fontSize:".54rem",color:C.muted,marginTop:3}}>{m.l}</div></button>)}
-            </div>
-            <L>Note (optional)</L><input className="inp" placeholder="What's on your mind…" value={fMood.note} onChange={e=>setFMood(p=>({...p,note:e.target.value}))}/>
-            <button className="btn bta" style={{marginTop:12}} onClick={logMood}>Log</button>
-          </div>
-          {mood.length>0&&<div className="card" style={{padding:"8px 12px"}}>
-            {mood.slice(0,20).map(m=>{const opt=MOODS.find(o=>o.v===m.value);return(
-              <div key={m.date} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.border}`}}>
-                <div style={{width:64,fontSize:".7rem",color:C.muted}}>{fmt(m.date)}</div>
-                <span style={{fontSize:"1.1rem"}}>{opt?.e}</span>
-                <span style={{fontSize:".72rem",color:C.muted}}>{opt?.l}</span>
-                {m.note&&<span style={{fontSize:".67rem",color:C.muted,flex:1,textAlign:"right"}}>{m.note}</span>}
-              </div>
-            );})}
-          </div>}
-        </>}
-
-        {/* ══ TASKS ══ */}
-        {tab==="Tasks"&&<>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <T>Tasks & Deadlines</T>
-            <button className="btn bta" onClick={()=>setMTask(true)}>+ Add</button>
-          </div>
-          {["high","medium","low"].map(prio=>{
-            const ts=tasks.filter(t=>t.priority===prio&&!t.done);
-            if(!ts.length)return null;
-            const [pc2,pl]=TPRIO[prio];
-            return(
-              <div key={prio} style={{marginBottom:10}}>
-                <div style={{fontSize:".62rem",color:pc2,textTransform:"uppercase",letterSpacing:".08em",marginBottom:5}}>{pl} priority</div>
-                {ts.map(t=>{
-                  const od=t.due&&t.due<today();
-                  return(
-                    <div key={t.id} className="trow">
-                      <MoveBtns setter={setTasks} id={t.id} />
-                      <button style={{width:15,height:15,borderRadius:"50%",border:`1.5px solid ${od?C.bad:C.border}`,background:"transparent",cursor:"pointer",flexShrink:0,marginTop:3}} onClick={()=>setTasks(p=>p.map(x=>x.id===t.id?{...x,done:true}:x))}/>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:".82rem",color:od?C.bad:C.text}}>{t.title}</div>
-                        <div style={{display:"flex",gap:5,marginTop:3,flexWrap:"wrap"}}>
-                          <Chip color={pc2}>{t.category}</Chip>
-                          {t.due&&<Chip color={od?C.bad:C.muted}>{od?"⚠ ":""}{fmt(t.due)}</Chip>}
-                        </div>
-                        {t.note&&<div style={{fontSize:".64rem",color:C.muted,marginTop:2}}>{t.note}</div>}
-                      </div>
-                      <button className="btx" onClick={()=>setTasks(p=>p.filter(x=>x.id!==t.id))}>✕</button>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-          {tasks.filter(t=>t.done).length>0&&<>
-            <Hr/>
-            <div style={{fontSize:".62rem",color:C.muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:5}}>Completed</div>
-            {tasks.filter(t=>t.done).slice(0,5).map(t=>(
-              <div key={t.id} className="trow" style={{opacity:.45}}>
-                <div style={{width:14,height:14,borderRadius:"50%",background:C.good,display:"flex",alignItems:"center",justifyContent:"center",fontSize:".55rem",color:"#fff",marginTop:2}}>✓</div>
-                <div style={{flex:1,fontSize:".79rem",textDecoration:"line-through",color:C.muted}}>{t.title}</div>
-                <button className="btx" onClick={()=>setTasks(p=>p.filter(x=>x.id!==t.id))}>✕</button>
-              </div>
-            ))}
-          </>}
-          {tasks.length===0&&<div style={{color:C.muted,textAlign:"center",marginTop:40}}>No tasks yet.</div>}
         </>}
 
         {/* ══ BUSINESS ══ */}
@@ -746,6 +829,8 @@ function MainApp({ session }) {
           <div className="row" style={{marginBottom:14}}>
             <Stat label="Avg Sleep" value={rep.avgS} color={C.accent}/>
             <Stat label="Avg Mood" value={`${rep.avgM}/5`} color={C.accent}/>
+            <Stat label="Avg Mental" value={`${rep.avgMen}/5`} color={C.teal}/>
+            <Stat label="Avg Physical" value={`${rep.avgPhy}/5`} color={C.good}/>
           </div>
           {subs.length>0&&<div>
             <div style={{fontSize:".62rem",color:C.muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:7}}>School</div>
