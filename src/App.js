@@ -42,7 +42,7 @@ const OSTATUS = { pending:[C.accent,"Pending"], in_progress:[C.teal,"In progress
 /* ── tiny components ── */
 const Bar = ({pct,color}) => (<div style={{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.min(pct||0,100)}%`,background:color,borderRadius:3,transition:"width .3s"}}/></div>);
 const Stat = ({label,value,color}) => (<div style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:8,padding:"12px 10px",textAlign:"center",flex:1,minWidth:72}}><div style={{fontSize:".57rem",color:C.muted,letterSpacing:".08em",textTransform:"uppercase",marginBottom:4}}>{label}</div><div style={{fontSize:"1.1rem",color:color||C.text,fontFamily:"'Lora',serif"}}>{value}</div></div>);
-const Chip = ({children,color,bg}) => (<span style={{display:"inline-block",padding:"2px 7px",borderRadius:4,fontSize:".63rem",fontFamily:"'IBM Plex Mono',monospace",background:bg||C.border,color:color||C.muted}}>{children}</span>);
+const Chip = ({children,color,bg,onClick}) => (<span onClick={onClick} style={{display:"inline-block",padding:"2px 7px",borderRadius:4,fontSize:".63rem",fontFamily:"'IBM Plex Mono',monospace",background:bg||C.border,color:color||C.muted,cursor:onClick?"pointer":"default"}}>{children}</span>);
 const T = ({children}) => <div style={{fontFamily:"'Lora',serif",fontSize:".93rem",fontWeight:500,color:C.text,marginBottom:12}}>{children}</div>;
 const L = ({children}) => <span style={{fontSize:".62rem",color:C.muted,letterSpacing:".09em",textTransform:"uppercase",display:"block",margin:"10px 0 4px",fontFamily:"'IBM Plex Mono',monospace"}}>{children}</span>;
 const Hr = () => <div style={{height:1,background:C.border,margin:"14px 0"}}/>;
@@ -224,7 +224,7 @@ function MainApp({ session }) {
   const [fFgoal, setFFgoal] = useState({name:"",target:"",saved:""});
   const [fRecur, setFRecur] = useState({name:"",type:"expense",amount:"",day:1,note:""});
   const [fInvest, setFInvest] = useState({name:"", type:"crypto", amount:""});
-  const [fGoal, setFGoal] = useState({title:"",type:"numeric",target:"",unit:"",current:""});
+  const [fGoal, setFGoal] = useState({title:"",type:"numeric",target:"",unit:"",current:"",priority:"medium"});
   const [fSub, setFSub] = useState({name:"",color:"#5b8dd9"});
   const [fStudy, setFStudy] = useState({subId:"",date:today(),dur:"01:00",note:""});
   const [fGrade, setFGrade] = useState({subId:"",date:today(),label:"",grade:"1",weight:5});
@@ -254,7 +254,7 @@ function MainApp({ session }) {
   const addFgoal = () => { if(!fFgoal.name||!fFgoal.target)return; setFgoals(p=>[...p,{...fFgoal,id:Date.now(),target:parseFloat(fFgoal.target),saved:parseFloat(fFgoal.saved)||0}]); setFFgoal({name:"",target:"",saved:""}); setMFgoal(false); };
   const addInvest = () => { if(!fInvest.name||!fInvest.amount)return; setInvestments(p=>[...p,{...fInvest,id:Date.now(),amount:parseFloat(fInvest.amount)}]); setFInvest({name:"",type:"crypto",amount:""}); setMInvest(false); };
 
-  const addGoal = () => { if(!fGoal.title)return; setGoals(p=>[...p,{...fGoal,id:Date.now(),target:parseFloat(fGoal.target)||1,current:parseFloat(fGoal.current)||0,done:false}]); setFGoal({title:"",type:"numeric",target:"",unit:"",current:""}); setMGoal(false); };
+  const addGoal = () => { if(!fGoal.title)return; setGoals(p=>[...p,{...fGoal,id:Date.now(),target:parseFloat(fGoal.target)||1,current:parseFloat(fGoal.current)||0,done:false,priority:fGoal.priority||"medium"}]); setFGoal({title:"",type:"numeric",target:"",unit:"",current:"",priority:"medium"}); setMGoal(false); };
   const addSub = () => { if(!fSub.name.trim())return; setSubs(p=>[...p,{...fSub,id:Date.now()}]); setFSub({name:"",color:pc(subs.length)}); setMSub(false); };
   const logStudy = () => { if(!fStudy.subId||!fStudy.dur)return; setStudy(p=>[...p,{...fStudy,id:Date.now(),minutes:toMins(fStudy.dur)}]); setFStudy(p=>({...p,dur:"01:00",note:""})); };
   const logGrade = () => { if(!fGrade.subId||!fGrade.label||!fGrade.grade)return; setGrades(p=>[...p,{...fGrade,id:Date.now(),gnum:gradeNum(fGrade.grade),weight:parseInt(fGrade.weight)||5}]); setFGrade(p=>({...p,label:"",grade:"1",weight:5})); };
@@ -272,7 +272,7 @@ function MainApp({ session }) {
     } else if (fHealth.type === "physical") {
       setPhysical(p=>[...p.filter(m=>m.date!==fHealth.date), {date: fHealth.date, value: fHealth.value, note: fHealth.note}].sort((a,b)=>b.date.localeCompare(a.date)));
     }
-    setFHealth(p=>({...p, note:""})); // clear note after save
+    setFHealth(p=>({...p, note:""}));
   };
 
   /* Journal Logic */
@@ -321,12 +321,19 @@ function MainApp({ session }) {
     return {rInc,rExp,rBal:rInc-rExp,avgM,avgS,avgMen,avgPhy,hStats,gStats,rRev,rBExp,rProfit:rRev-rBExp};
   },[repMonth,fin,recur,mood,sleep,mental,physical,habits,hlog,goals,biz]);
 
+  /* ── Stats for Header ── */
+  const todayHabits = habits.filter(h => scheduled(h, today()));
+  const doneHabits = todayHabits.filter(h => isDone(h, today()));
+  const habStr = todayHabits.length ? `${doneHabits.length}/${todayHabits.length}` : "—";
+  const habC = doneHabits.length === todayHabits.length && todayHabits.length > 0 ? C.good : C.accent;
+
+  const upcomingTasks = tasks.filter(t => !t.done && t.due && t.due >= today()).sort((a,b) => a.due.localeCompare(b.due));
+  let nextTaskStr = upcomingTasks[0] ? upcomingTasks[0].title : "Clear";
+  if (nextTaskStr.length > 10) nextTaskStr = nextTaskStr.substring(0, 8) + "…";
+
   const freqLbl = (freq) => {
     if(!freq||freq.type==="daily")return"Daily"; if(freq.type==="every_x_days")return`Every ${freq.x||2} days`; if(freq.type==="weekly")return`Weekly (${(freq.days||[]).map(i=>WDAYS[i]).join(", ")})`; if(freq.type==="monthly")return`Monthly (day ${freq.day||1})`; return"";
   };
-
-  const avgMood=mood.slice(0,7).length?(mood.slice(0,7).reduce((s,m)=>s+m.value,0)/Math.min(mood.length,7)).toFixed(1):"—";
-  const sleepAvg = sleep.slice(0,7).length?Math.round(sleep.slice(0,7).reduce((s,x)=>s+x.minutes,0)/Math.min(sleep.length,7)):0;
 
   if (loading) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,color:C.muted,fontFamily:"'IBM Plex Mono',monospace",flexDirection:"column",gap:12}}>
@@ -338,28 +345,6 @@ function MainApp({ session }) {
   return (
     <div style={{fontFamily:"'IBM Plex Mono',monospace",background:C.bg,minHeight:"100vh",color:C.text}}>
       <style>{css}</style>
-      
-      {/* ── Auto-Complete Datalists ── */}
-      <datalist id="inc-cats">
-        <option value="Salary"/>
-        <option value="Refereeing Matches"/>
-        <option value="Manual Labor"/>
-        <option value="Allowance"/>
-        <option value="Gifts"/>
-        <option value="Bonuses"/>
-      </datalist>
-      <datalist id="exp-cats">
-        <option value="Rent"/>
-        <option value="Electricity"/>
-        <option value="Water / Utilities"/>
-        <option value="Subscriptions"/>
-        <option value="Car & Fuel"/>
-        <option value="Groceries"/>
-        <option value="Sports Gear"/>
-        <option value="Electronics"/>
-        <option value="Dining Out"/>
-        <option value="Household"/>
-      </datalist>
 
       <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"13px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
         <div>
@@ -367,7 +352,7 @@ function MainApp({ session }) {
           <div style={{fontSize:".59rem",color:C.muted,marginTop:1}}>{new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
         </div>
         <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-          {[{l:"Mood",v:avgMood,c:C.accent},{l:"Balance",v:`${mBal>=0?"+":""}${Math.abs(mBal).toFixed(0)} Kč`,c:mBal>=0?C.good:C.bad},{l:"Sleep",v:sleep[0]?hm(sleep[0].minutes):"—",c:C.accent},{l:"Deadlines",v:overdue>0?`⚠ ${overdue}`:tasks.filter(t=>!t.done).length,c:overdue>0?C.bad:C.muted}].map(s=>(
+          {[{l:"Habits",v:habStr,c:habC},{l:"Balance",v:`${mBal>=0?"+":""}${Math.abs(mBal).toFixed(0)} Kč`,c:mBal>=0?C.good:C.bad},{l:"Next Task",v:nextTaskStr,c:C.accent},{l:"Deadlines",v:overdue>0?`⚠ ${overdue}`:tasks.filter(t=>!t.done).length,c:overdue>0?C.bad:C.muted}].map(s=>(
             <div key={s.l} style={{textAlign:"center"}}>
               <div style={{fontSize:".54rem",color:C.muted,textTransform:"uppercase",letterSpacing:".07em"}}>{s.l}</div>
               <div style={{fontSize:".98rem",color:s.c,fontFamily:"'Lora',serif",marginTop:1}}>{s.v}</div>
@@ -480,12 +465,16 @@ function MainApp({ session }) {
           </div>
           {goals.length===0&&<div style={{color:C.muted,textAlign:"center",marginTop:40}}>No goals yet.</div>}
           {goals.map(g=>{
+            const [pc2,pl]=TPRIO[g.priority||"medium"];
             if(g.type==="completable")return(
               <div key={g.id} className="card">
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div style={{display:"flex",alignItems:"center"}}>
                     <MoveBtns setter={setGoals} id={g.id} />
-                    <div><div style={{fontSize:".85rem",display:"flex",alignItems:"center",gap:7}}>{g.done&&<span style={{color:C.good}}>✓</span>}{g.title}</div><div style={{marginTop:4}}><Chip>Completable</Chip></div></div>
+                    <div>
+                      <div style={{fontSize:".85rem",display:"flex",alignItems:"center",gap:7}}>{g.done&&<span style={{color:C.good}}>✓</span>}{g.title}</div>
+                      <div style={{marginTop:4,display:"flex",gap:5}}><Chip>Completable</Chip><Chip color={pc2}>{pl}</Chip></div>
+                    </div>
                   </div>
                   <div style={{display:"flex",gap:7}}>
                     <button className="btn" style={{background:g.done?C.good+"22":C.border,color:g.done?C.good:C.muted,fontSize:".68rem",padding:"5px 10px"}} onClick={()=>setGoals(p=>p.map(x=>x.id===g.id?{...x,done:!x.done}:x))}>{g.done?"✓ Done":"Mark done"}</button>
@@ -500,7 +489,7 @@ function MainApp({ session }) {
                 <div style={{display:"flex",justifyContent:"space-between"}}>
                   <div style={{display:"flex",alignItems:"center"}}>
                     <MoveBtns setter={setGoals} id={g.id} />
-                    <div><div style={{fontSize:".85rem"}}>{g.title}</div><div style={{fontSize:".67rem",color:C.muted,marginTop:2}}>{g.current} / {g.target} {g.unit}</div></div>
+                    <div><div style={{fontSize:".85rem"}}>{g.title}</div><div style={{fontSize:".67rem",color:C.muted,marginTop:2}}><Chip color={pc2}>{pl}</Chip> {g.current} / {g.target} {g.unit}</div></div>
                   </div>
                   <button className="btx" onClick={()=>setGoals(p=>p.filter(x=>x.id!==g.id))}>✕</button>
                 </div>
@@ -740,7 +729,15 @@ function MainApp({ session }) {
             <T>Add Entry</T>
             <div className="row">
               <div><L>Type</L><select className="sel" value={fFin.type} onChange={e=>setFFin(p=>({...p,type:e.target.value}))}><option value="income">Income</option><option value="expense">Expense</option></select></div>
-              <div style={{flex:1}}><L>Category</L><input className="inp" list={fFin.type==="income"?"inc-cats":"exp-cats"} placeholder="Start typing or pick..." value={fFin.category} onChange={e=>setFFin(p=>({...p,category:e.target.value}))}/></div>
+              <div style={{flex:1}}>
+                <L>Category</L>
+                <input className="inp" placeholder="Type here..." value={fFin.category} onChange={e=>setFFin(p=>({...p,category:e.target.value}))}/>
+                <div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>
+                  {(fFin.type==="income"?["Salary","Referee","Gifts"]:["Gas","Food","Gear","Subscriptions"]).map(c=>(
+                     <Chip key={c} onClick={()=>setFFin(p=>({...p,category:c}))}>{c}</Chip>
+                  ))}
+                </div>
+              </div>
               <div style={{width:88}}><L>Amount Kč</L><input type="number" className="inp" placeholder="0" value={fFin.amount} onChange={e=>setFFin(p=>({...p,amount:e.target.value}))}/></div>
             </div>
             <div className="row" style={{marginTop:7}}>
@@ -940,7 +937,7 @@ function MainApp({ session }) {
 
       {mGoal&&<div className="ov" onClick={()=>setMGoal(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
         <div style={{fontFamily:"'Lora',serif",fontSize:"1rem",marginBottom:12}}>New Goal</div>
-        <L>Title</L><input className="inp" placeholder="e.g. Run 100km" value={fGoal.title} onChange={e=>setFGoal(p=>({...p,title:e.target.value}))} autoFocus/>
+        <div className="row"><div style={{flex:1}}><L>Title</L><input className="inp" placeholder="e.g. Run 100km" value={fGoal.title} onChange={e=>setFGoal(p=>({...p,title:e.target.value}))} autoFocus/></div><div><L>Priority</L><select className="sel" value={fGoal.priority} onChange={e=>setFGoal(p=>({...p,priority:e.target.value}))}>{Object.entries(TPRIO).map(([k,[,l]])=><option key={k} value={k}>{l}</option>)}</select></div></div>
         <L>Type</L>
         <select className="sel" style={{width:"100%"}} value={fGoal.type} onChange={e=>setFGoal(p=>({...p,type:e.target.value}))}>
           <option value="numeric">Numeric (track progress)</option><option value="completable">Completable (done / not done)</option>
@@ -967,7 +964,13 @@ function MainApp({ session }) {
         <div style={{fontFamily:"'Lora',serif",fontSize:"1rem",marginBottom:12}}>Recurring Payment</div>
         <L>Name</L><input className="inp" placeholder="Rent, Spotify…" value={fRecur.name} onChange={e=>setFRecur(p=>({...p,name:e.target.value}))} autoFocus/>
         <div className="row"><div><L>Type</L><select className="sel" value={fRecur.type} onChange={e=>setFRecur(p=>({...p,type:e.target.value}))}><option value="expense">Expense</option><option value="income">Income</option></select></div><div style={{flex:1}}><L>Amount Kč</L><input type="number" className="inp" placeholder="0" value={fRecur.amount} onChange={e=>setFRecur(p=>({...p,amount:e.target.value}))}/></div><div><L>Day of month</L><input type="number" className="inp" style={{width:58}} min={1} max={28} value={fRecur.day} onChange={e=>setFRecur(p=>({...p,day:parseInt(e.target.value)||1}))}/></div></div>
-        <L>Category</L><input className="inp" list={fRecur.type==="income"?"inc-cats":"exp-cats"} placeholder="Start typing or pick..." value={fRecur.note} onChange={e=>setFRecur(p=>({...p,note:e.target.value}))}/>
+        <L>Category / Note</L>
+        <input className="inp" placeholder="Type here..." value={fRecur.note} onChange={e=>setFRecur(p=>({...p,note:e.target.value}))}/>
+        <div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>
+          {(fRecur.type==="income"?["Salary","Allowance"]:["Rent","Subscriptions","Gym"]).map(c=>(
+             <Chip key={c} onClick={()=>setFRecur(p=>({...p,note:c}))}>{c}</Chip>
+          ))}
+        </div>
         <div className="row" style={{marginTop:15}}><button className="btn bta" style={{flex:1}} onClick={addRecur}>Add</button><button className="btn btg" style={{flex:1}} onClick={()=>setMRecur(false)}>Cancel</button></div>
       </div></div>}
 
